@@ -1,0 +1,40 @@
+# Copyright 2023 wtcat 
+
+import os
+import rtems_waf.rtems as rtems
+
+def build(bld):
+    rtems.build(bld)
+    base_sources = [
+        'container/kfifo.c',
+        'container/observer.c',
+        'container/radix_tree.c',
+        'container/ring_buffer.c',
+        'ring/rte_ring.c',
+        'timer.c',
+        'workq.c',
+        'os_rtems.c'
+    ]
+
+    if bld.env.CONFIG_CORTEXM_CPU:
+        ccflags = ['-DCONFIG_CORTEXM_CPU={}'.format(bld.env.CONFIG_CORTEXM_CPU)]
+        bld.env.CFLAGS += ccflags
+        bld.env.CXXFLAGS += ccflags
+        base_sources += ['debug/cortexm/dwt.c']
+
+    # Google test framework
+    if bld.env.CONFIG_GOOLE_TEST == 1:
+        ccinclude = []
+        ccpath = os.path.join(bld.env.ROOTDIR, 'base/googletest')
+        ccinclude.append(ccpath)
+        ccinclude.append(ccpath + '/include')
+        bld.env.CXXFLAGS += ccinclude
+        base_sources += [
+            'googletest/src/gtest-all.cc',
+            'googletest/src/gtest_main.cc'
+        ]
+
+    bld.stlib(
+        target = 'base',
+        source = base_sources,
+    )
