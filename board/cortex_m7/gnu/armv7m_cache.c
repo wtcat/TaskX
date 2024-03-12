@@ -42,9 +42,9 @@
 /****************************************************************************
  * Included Files
  ****************************************************************************/
+#include "tx_port.h"
 #include <board/barriers.h>
 #include <board/nvic.h>
-#include "tx_port.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -61,12 +61,10 @@
  *                        ...
  */
 
-#define CCSIDR_WAYS(n) \
-  (((n) & NVIC_CCSIDR_ASSOCIATIVITY_MASK) >> NVIC_CCSIDR_ASSOCIATIVITY_SHIFT)
-#define CCSIDR_SETS(n) \
-  (((n) & NVIC_CCSIDR_NUMSETS_MASK) >> NVIC_CCSIDR_NUMSETS_SHIFT)
-#define CCSIDR_LSSHIFT(n) \
-  (((n) & NVIC_CCSIDR_LINESIZE_MASK) >> NVIC_CCSIDR_LINESIZE_SHIFT)
+#define CCSIDR_WAYS(n)                                                                   \
+	(((n)&NVIC_CCSIDR_ASSOCIATIVITY_MASK) >> NVIC_CCSIDR_ASSOCIATIVITY_SHIFT)
+#define CCSIDR_SETS(n) (((n)&NVIC_CCSIDR_NUMSETS_MASK) >> NVIC_CCSIDR_NUMSETS_SHIFT)
+#define CCSIDR_LSSHIFT(n) (((n)&NVIC_CCSIDR_LINESIZE_MASK) >> NVIC_CCSIDR_LINESIZE_SHIFT)
 
 /****************************************************************************
  * Inline Functions
@@ -87,12 +85,11 @@
  ****************************************************************************/
 
 #ifdef CONFIG_ARMV7M_DCACHE
-static inline uint32_t arm_clz(unsigned int value)
-{
-  uint32_t ret;
+static inline uint32_t arm_clz(unsigned int value) {
+	uint32_t ret;
 
-  __asm__ __volatile__ ("clz %0, %1" : "=r"(ret) : "r"(value));
-  return ret;
+	__asm__ __volatile__("clz %0, %1" : "=r"(ret) : "r"(value));
+	return ret;
 }
 #endif
 
@@ -115,25 +112,24 @@ static inline uint32_t arm_clz(unsigned int value)
  ****************************************************************************/
 
 #ifdef CONFIG_ARMV7M_ICACHE
-void cpu_enable_icache(void)
-{
-  uint32_t regval;
+void cpu_enable_icache(void) {
+	uint32_t regval;
 
-  ARM_DSB();
-  ARM_ISB();
+	ARM_DSB();
+	ARM_ISB();
 
-  /* Invalidate the entire I-Cache */
+	/* Invalidate the entire I-Cache */
 
-  putreg32(0, NVIC_ICIALLU);
+	putreg32(0, NVIC_ICIALLU);
 
-  /* Enable the I-Cache */
+	/* Enable the I-Cache */
 
-  regval  = getreg32(NVIC_CFGCON);
-  regval |= NVIC_CFGCON_IC;
-  putreg32(regval, NVIC_CFGCON);
+	regval = getreg32(NVIC_CFGCON);
+	regval |= NVIC_CFGCON_IC;
+	putreg32(regval, NVIC_CFGCON);
 
-  ARM_DSB();
-  ARM_ISB();
+	ARM_DSB();
+	ARM_ISB();
 }
 #endif
 
@@ -152,25 +148,24 @@ void cpu_enable_icache(void)
  ****************************************************************************/
 
 #ifdef CONFIG_ARMV7M_ICACHE
-void cpu_disable_icache(void)
-{
-  uint32_t regval;
+void cpu_disable_icache(void) {
+	uint32_t regval;
 
-  ARM_DSB();
-  ARM_ISB();
+	ARM_DSB();
+	ARM_ISB();
 
-  /* Disable the I-Cache */
+	/* Disable the I-Cache */
 
-  regval  = getreg32(NVIC_CFGCON);
-  regval &= ~NVIC_CFGCON_IC;
-  putreg32(regval, NVIC_CFGCON);
+	regval = getreg32(NVIC_CFGCON);
+	regval &= ~NVIC_CFGCON_IC;
+	putreg32(regval, NVIC_CFGCON);
 
-  /* Invalidate the entire I-Cache */
+	/* Invalidate the entire I-Cache */
 
-  putreg32(0, NVIC_ICIALLU);
+	putreg32(0, NVIC_ICIALLU);
 
-  ARM_DSB();
-  ARM_ISB();
+	ARM_DSB();
+	ARM_ISB();
 }
 #endif
 
@@ -190,59 +185,55 @@ void cpu_disable_icache(void)
  ****************************************************************************/
 
 #ifdef CONFIG_ARMV7M_ICACHE
-void cpu_invalidate_icache(uintptr_t start, uintptr_t end)
-{
-  uint32_t ccsidr;
-  uint32_t sshift;
-  uint32_t ssize;
+void cpu_invalidate_icache(uintptr_t start, uintptr_t end) {
+	uint32_t ccsidr;
+	uint32_t sshift;
+	uint32_t ssize;
 
-  /* Get the characteristics of the I-Cache */
+	/* Get the characteristics of the I-Cache */
 
-  ccsidr = getreg32(NVIC_CCSIDR);
-  sshift = CCSIDR_LSSHIFT(ccsidr) + 4;   /* log2(cache-line-size-in-bytes) */
+	ccsidr = getreg32(NVIC_CCSIDR);
+	sshift = CCSIDR_LSSHIFT(ccsidr) + 4; /* log2(cache-line-size-in-bytes) */
 
-  /* Invalidate the I-Cache containing this range of addresses */
+	/* Invalidate the I-Cache containing this range of addresses */
 
-  ssize  = (1 << sshift);
+	ssize = (1 << sshift);
 
-  /* Round down the start address to the nearest cache line boundary.
-   *
-   *   sshift = 5      : Offset to the beginning of the set field
-   *   (ssize - 1)  = 0x007f : Mask of the set field
-   */
+	/* Round down the start address to the nearest cache line boundary.
+	 *
+	 *   sshift = 5      : Offset to the beginning of the set field
+	 *   (ssize - 1)  = 0x007f : Mask of the set field
+	 */
 
-  ARM_DSB();
+	ARM_DSB();
 
-  if ((start & (ssize - 1)) != 0)
-    {
-      start &= ~(ssize - 1);
-      putreg32(start, NVIC_ICIMVAU);
-      start += ssize;
-    }
+	if ((start & (ssize - 1)) != 0) {
+		start &= ~(ssize - 1);
+		putreg32(start, NVIC_ICIMVAU);
+		start += ssize;
+	}
 
-  while (start + ssize <= end)
-    {
-      /* The below store causes the cache to check its directory and
-       * determine if this address is contained in the cache. If so, it
-       * invalidate that cache line. Only the cache way containing the
-       * address is invalidated. If the address is not in the cache, then
-       * nothing is invalidated.
-       */
+	while (start + ssize <= end) {
+		/* The below store causes the cache to check its directory and
+		 * determine if this address is contained in the cache. If so, it
+		 * invalidate that cache line. Only the cache way containing the
+		 * address is invalidated. If the address is not in the cache, then
+		 * nothing is invalidated.
+		 */
 
-      putreg32(start, NVIC_ICIMVAU);
+		putreg32(start, NVIC_ICIMVAU);
 
-      /* Increment the address by the size of one cache line. */
+		/* Increment the address by the size of one cache line. */
 
-      start += ssize;
-    }
+		start += ssize;
+	}
 
-  if (start < end)
-    {
-      putreg32(start, NVIC_ICIMVAU);
-    }
+	if (start < end) {
+		putreg32(start, NVIC_ICIMVAU);
+	}
 
-  ARM_DSB();
-  ARM_ISB();
+	ARM_DSB();
+	ARM_ISB();
 }
 #endif /* CONFIG_ARMV7M_ICACHE */
 
@@ -261,17 +252,16 @@ void cpu_invalidate_icache(uintptr_t start, uintptr_t end)
  ****************************************************************************/
 
 #ifdef CONFIG_ARMV7M_ICACHE
-void cpu_invalidate_icache_all(void)
-{
-  ARM_DSB();
-  ARM_ISB();
+void cpu_invalidate_icache_all(void) {
+	ARM_DSB();
+	ARM_ISB();
 
-  /* Invalidate the entire I-Cache */
+	/* Invalidate the entire I-Cache */
 
-  putreg32(0, NVIC_ICIALLU);
+	putreg32(0, NVIC_ICIALLU);
 
-  ARM_DSB();
-  ARM_ISB();
+	ARM_DSB();
+	ARM_ISB();
 }
 #endif
 
@@ -290,68 +280,63 @@ void cpu_invalidate_icache_all(void)
  ****************************************************************************/
 
 #ifdef CONFIG_ARMV7M_DCACHE
-void cpu_enable_dcache(void)
-{
-  uint32_t ccsidr;
-  uint32_t ccr;
-  uint32_t sshift;
-  uint32_t wshift;
-  uint32_t sw;
-  uint32_t sets;
-  uint32_t ways;
+void cpu_enable_dcache(void) {
+	uint32_t ccsidr;
+	uint32_t ccr;
+	uint32_t sshift;
+	uint32_t wshift;
+	uint32_t sw;
+	uint32_t sets;
+	uint32_t ways;
 
-  /* Get the characteristics of the D-Cache */
+	/* Get the characteristics of the D-Cache */
 
-  ccsidr = getreg32(NVIC_CCSIDR);
-  sets   = CCSIDR_SETS(ccsidr);          /* (Number of sets) - 1 */
-  sshift = CCSIDR_LSSHIFT(ccsidr) + 4;   /* log2(cache-line-size-in-bytes) */
-  ways   = CCSIDR_WAYS(ccsidr);          /* (Number of ways) - 1 */
+	ccsidr = getreg32(NVIC_CCSIDR);
+	sets = CCSIDR_SETS(ccsidr);			 /* (Number of sets) - 1 */
+	sshift = CCSIDR_LSSHIFT(ccsidr) + 4; /* log2(cache-line-size-in-bytes) */
+	ways = CCSIDR_WAYS(ccsidr);			 /* (Number of ways) - 1 */
 
-  /* Calculate the bit offset for the way field in the DCISW register by
-   * counting the number of leading zeroes.  For example:
-   *
-   *   Number of  Value of ways  Field
-   *   Ways       'ways'         Offset
-   *     2         1             31
-   *     4         3             30
-   *     8         7             29
-   *   ...
-   */
+	/* Calculate the bit offset for the way field in the DCISW register by
+	 * counting the number of leading zeroes.  For example:
+	 *
+	 *   Number of  Value of ways  Field
+	 *   Ways       'ways'         Offset
+	 *     2         1             31
+	 *     4         3             30
+	 *     8         7             29
+	 *   ...
+	 */
 
-  wshift = arm_clz(ways) & 0x1f;
+	wshift = arm_clz(ways) & 0x1f;
 
-  /* Invalidate the entire D-Cache */
+	/* Invalidate the entire D-Cache */
 
-  ARM_DSB();
-  do
-    {
-      int32_t tmpways = ways;
+	ARM_DSB();
+	do {
+		int32_t tmpways = ways;
 
-      do
-        {
-          sw = ((tmpways << wshift) | (sets << sshift));
-          putreg32(sw, NVIC_DCISW);
-        }
-      while (tmpways--);
-    }
-  while (sets--);
+		do {
+			sw = ((tmpways << wshift) | (sets << sshift));
+			putreg32(sw, NVIC_DCISW);
+		} while (tmpways--);
+	} while (sets--);
 
-  ARM_DSB();
+	ARM_DSB();
 
 #ifdef CONFIG_ARMV7M_DCACHE_WRITETHROUGH
-  ccr = getreg32(NVIC_CACR);
-  ccr |= NVIC_CACR_FORCEWT;
-  putreg32(ccr, NVIC_CACR);
+	ccr = getreg32(NVIC_CACR);
+	ccr |= NVIC_CACR_FORCEWT;
+	putreg32(ccr, NVIC_CACR);
 #endif
 
-  /* Enable the D-Cache */
+	/* Enable the D-Cache */
 
-  ccr  = getreg32(NVIC_CFGCON);
-  ccr |= NVIC_CFGCON_DC;
-  putreg32(ccr, NVIC_CFGCON);
+	ccr = getreg32(NVIC_CFGCON);
+	ccr |= NVIC_CFGCON_DC;
+	putreg32(ccr, NVIC_CFGCON);
 
-  ARM_DSB();
-  ARM_ISB();
+	ARM_DSB();
+	ARM_ISB();
 }
 #endif /* CONFIG_ARMV7M_DCACHE */
 
@@ -370,61 +355,56 @@ void cpu_enable_dcache(void)
  ****************************************************************************/
 
 #ifdef CONFIG_ARMV7M_DCACHE
-void cpu_disable_dcache(void)
-{
-  uint32_t ccsidr;
-  uint32_t ccr;
-  uint32_t sshift;
-  uint32_t wshift;
-  uint32_t sw;
-  uint32_t sets;
-  uint32_t ways;
+void cpu_disable_dcache(void) {
+	uint32_t ccsidr;
+	uint32_t ccr;
+	uint32_t sshift;
+	uint32_t wshift;
+	uint32_t sw;
+	uint32_t sets;
+	uint32_t ways;
 
-  /* Get the characteristics of the D-Cache */
+	/* Get the characteristics of the D-Cache */
 
-  ccsidr = getreg32(NVIC_CCSIDR);
-  sets   = CCSIDR_SETS(ccsidr);          /* (Number of sets) - 1 */
-  sshift = CCSIDR_LSSHIFT(ccsidr) + 4;   /* log2(cache-line-size-in-bytes) */
-  ways   = CCSIDR_WAYS(ccsidr);          /* (Number of ways) - 1 */
+	ccsidr = getreg32(NVIC_CCSIDR);
+	sets = CCSIDR_SETS(ccsidr);			 /* (Number of sets) - 1 */
+	sshift = CCSIDR_LSSHIFT(ccsidr) + 4; /* log2(cache-line-size-in-bytes) */
+	ways = CCSIDR_WAYS(ccsidr);			 /* (Number of ways) - 1 */
 
-  /* Calculate the bit offset for the way field in the DCCISW register by
-   * counting the number of leading zeroes.  For example:
-   *
-   *   Number of  Value of ways  Field
-   *   Ways       'ways'         Offset
-   *     2         1             31
-   *     4         3             30
-   *     8         7             29
-   *   ...
-   */
+	/* Calculate the bit offset for the way field in the DCCISW register by
+	 * counting the number of leading zeroes.  For example:
+	 *
+	 *   Number of  Value of ways  Field
+	 *   Ways       'ways'         Offset
+	 *     2         1             31
+	 *     4         3             30
+	 *     8         7             29
+	 *   ...
+	 */
 
-  wshift = arm_clz(ways) & 0x1f;
+	wshift = arm_clz(ways) & 0x1f;
 
-  ARM_DSB();
+	ARM_DSB();
 
-  /* Disable the D-Cache */
+	/* Disable the D-Cache */
 
-  ccr = getreg32(NVIC_CFGCON);
-  ccr &= ~NVIC_CFGCON_DC;
-  putreg32(ccr, NVIC_CFGCON);
+	ccr = getreg32(NVIC_CFGCON);
+	ccr &= ~NVIC_CFGCON_DC;
+	putreg32(ccr, NVIC_CFGCON);
 
-  /* Clean and invalidate the entire D-Cache */
+	/* Clean and invalidate the entire D-Cache */
 
-  do
-    {
-      int32_t tmpways = ways;
+	do {
+		int32_t tmpways = ways;
 
-      do
-        {
-          sw = ((tmpways << wshift) | (sets << sshift));
-          putreg32(sw, NVIC_DCCISW);
-        }
-      while (tmpways--);
-    }
-  while (sets--);
+		do {
+			sw = ((tmpways << wshift) | (sets << sshift));
+			putreg32(sw, NVIC_DCCISW);
+		} while (tmpways--);
+	} while (sets--);
 
-  ARM_DSB();
-  ARM_ISB();
+	ARM_DSB();
+	ARM_ISB();
 }
 #endif /* CONFIG_ARMV7M_DCACHE */
 
@@ -453,59 +433,55 @@ void cpu_disable_dcache(void)
  ****************************************************************************/
 
 #ifdef CONFIG_ARMV7M_DCACHE
-void cpu_invalidate_dcache(uintptr_t start, uintptr_t end)
-{
-  uint32_t ccsidr;
-  uint32_t sshift;
-  uint32_t ssize;
+void cpu_invalidate_dcache(uintptr_t start, uintptr_t end) {
+	uint32_t ccsidr;
+	uint32_t sshift;
+	uint32_t ssize;
 
-  /* Get the characteristics of the D-Cache */
+	/* Get the characteristics of the D-Cache */
 
-  ccsidr = getreg32(NVIC_CCSIDR);
-  sshift = CCSIDR_LSSHIFT(ccsidr) + 4;   /* log2(cache-line-size-in-bytes) */
+	ccsidr = getreg32(NVIC_CCSIDR);
+	sshift = CCSIDR_LSSHIFT(ccsidr) + 4; /* log2(cache-line-size-in-bytes) */
 
-  /* Invalidate the D-Cache containing this range of addresses */
+	/* Invalidate the D-Cache containing this range of addresses */
 
-  ssize  = (1 << sshift);
+	ssize = (1 << sshift);
 
-  /* Round down the start address to the nearest cache line boundary.
-   *
-   *   sshift = 5      : Offset to the beginning of the set field
-   *   (ssize - 1)  = 0x007f : Mask of the set field
-   */
+	/* Round down the start address to the nearest cache line boundary.
+	 *
+	 *   sshift = 5      : Offset to the beginning of the set field
+	 *   (ssize - 1)  = 0x007f : Mask of the set field
+	 */
 
-  ARM_DSB();
+	ARM_DSB();
 
-  if ((start & (ssize - 1)) != 0)
-    {
-      start &= ~(ssize - 1);
-      putreg32(start, NVIC_DCCIMVAC);
-      start += ssize;
-    }
+	if ((start & (ssize - 1)) != 0) {
+		start &= ~(ssize - 1);
+		putreg32(start, NVIC_DCCIMVAC);
+		start += ssize;
+	}
 
-  while (start + ssize <= end)
-    {
-      /* The below store causes the cache to check its directory and
-       * determine if this address is contained in the cache. If so, it
-       * invalidate that cache line. Only the cache way containing the
-       * address is invalidated. If the address is not in the cache, then
-       * nothing is invalidated.
-       */
+	while (start + ssize <= end) {
+		/* The below store causes the cache to check its directory and
+		 * determine if this address is contained in the cache. If so, it
+		 * invalidate that cache line. Only the cache way containing the
+		 * address is invalidated. If the address is not in the cache, then
+		 * nothing is invalidated.
+		 */
 
-      putreg32(start, NVIC_DCIMVAC);
+		putreg32(start, NVIC_DCIMVAC);
 
-      /* Increment the address by the size of one cache line. */
+		/* Increment the address by the size of one cache line. */
 
-      start += ssize;
-    }
+		start += ssize;
+	}
 
-  if (start < end)
-    {
-      putreg32(start, NVIC_DCCIMVAC);
-    }
+	if (start < end) {
+		putreg32(start, NVIC_DCCIMVAC);
+	}
 
-  ARM_DSB();
-  ARM_ISB();
+	ARM_DSB();
+	ARM_ISB();
 }
 #endif /* CONFIG_ARMV7M_DCACHE */
 
@@ -524,54 +500,49 @@ void cpu_invalidate_dcache(uintptr_t start, uintptr_t end)
  ****************************************************************************/
 
 #ifdef CONFIG_ARMV7M_DCACHE
-void cpu_invalidate_dcache_all(void)
-{
-  uint32_t ccsidr;
-  uint32_t sshift;
-  uint32_t wshift;
-  uint32_t sw;
-  uint32_t sets;
-  uint32_t ways;
+void cpu_invalidate_dcache_all(void) {
+	uint32_t ccsidr;
+	uint32_t sshift;
+	uint32_t wshift;
+	uint32_t sw;
+	uint32_t sets;
+	uint32_t ways;
 
-  /* Get the characteristics of the D-Cache */
+	/* Get the characteristics of the D-Cache */
 
-  ccsidr = getreg32(NVIC_CCSIDR);
-  sets   = CCSIDR_SETS(ccsidr);          /* (Number of sets) - 1 */
-  sshift = CCSIDR_LSSHIFT(ccsidr) + 4;   /* log2(cache-line-size-in-bytes) */
-  ways   = CCSIDR_WAYS(ccsidr);          /* (Number of ways) - 1 */
+	ccsidr = getreg32(NVIC_CCSIDR);
+	sets = CCSIDR_SETS(ccsidr);			 /* (Number of sets) - 1 */
+	sshift = CCSIDR_LSSHIFT(ccsidr) + 4; /* log2(cache-line-size-in-bytes) */
+	ways = CCSIDR_WAYS(ccsidr);			 /* (Number of ways) - 1 */
 
-  /* Calculate the bit offset for the way field in the DCISW register by
-   * counting the number of leading zeroes.  For example:
-   *
-   *   Number of  Value of ways  Field
-   *   Ways       'ways'         Offset
-   *     2         1             31
-   *     4         3             30
-   *     8         7             29
-   *   ...
-   */
+	/* Calculate the bit offset for the way field in the DCISW register by
+	 * counting the number of leading zeroes.  For example:
+	 *
+	 *   Number of  Value of ways  Field
+	 *   Ways       'ways'         Offset
+	 *     2         1             31
+	 *     4         3             30
+	 *     8         7             29
+	 *   ...
+	 */
 
-  wshift = arm_clz(ways) & 0x1f;
+	wshift = arm_clz(ways) & 0x1f;
 
-  ARM_DSB();
+	ARM_DSB();
 
-  /* Invalidate the entire D-Cache */
+	/* Invalidate the entire D-Cache */
 
-  do
-    {
-      int32_t tmpways = ways;
+	do {
+		int32_t tmpways = ways;
 
-      do
-        {
-          sw = ((tmpways << wshift) | (sets << sshift));
-          putreg32(sw, NVIC_DCISW);
-        }
-      while (tmpways--);
-    }
-  while (sets--);
+		do {
+			sw = ((tmpways << wshift) | (sets << sshift));
+			putreg32(sw, NVIC_DCISW);
+		} while (tmpways--);
+	} while (sets--);
 
-  ARM_DSB();
-  ARM_ISB();
+	ARM_DSB();
+	ARM_ISB();
 }
 #endif /* CONFIG_ARMV7M_DCACHE */
 
@@ -600,53 +571,49 @@ void cpu_invalidate_dcache_all(void)
  ****************************************************************************/
 
 #ifdef CONFIG_ARMV7M_DCACHE
-void cpu_clean_dcache(uintptr_t start, uintptr_t end)
-{
+void cpu_clean_dcache(uintptr_t start, uintptr_t end) {
 #ifndef CONFIG_ARMV7M_DCACHE_WRITETHROUGH
-  uint32_t ccsidr;
-  uint32_t sshift;
-  uint32_t ssize;
-  uint32_t sets;
-  uint32_t ways;
+	uint32_t ccsidr;
+	uint32_t sshift;
+	uint32_t ssize;
+	uint32_t sets;
+	uint32_t ways;
 
-  /* Get the characteristics of the D-Cache */
+	/* Get the characteristics of the D-Cache */
 
-  ccsidr = getreg32(NVIC_CCSIDR);
-  sshift = CCSIDR_LSSHIFT(ccsidr) + 4;   /* log2(cache-line-size-in-bytes) */
-  sets   = CCSIDR_SETS(ccsidr);          /* (Number of sets) - 1 */
-  ways   = CCSIDR_WAYS(ccsidr);          /* (Number of ways) - 1 */
+	ccsidr = getreg32(NVIC_CCSIDR);
+	sshift = CCSIDR_LSSHIFT(ccsidr) + 4; /* log2(cache-line-size-in-bytes) */
+	sets = CCSIDR_SETS(ccsidr);			 /* (Number of sets) - 1 */
+	ways = CCSIDR_WAYS(ccsidr);			 /* (Number of ways) - 1 */
 
-  /* Clean the D-Cache over the range of addresses */
+	/* Clean the D-Cache over the range of addresses */
 
-  ssize  = (1 << sshift);
+	ssize = (1 << sshift);
 
-  if ((end - start) >= ssize * (sets + 1) * (ways + 1))
-    {
-      return cpu_clean_dcache_all();
-    }
+	if ((end - start) >= ssize * (sets + 1) * (ways + 1)) {
+		return cpu_clean_dcache_all();
+	}
 
-  start &= ~(ssize - 1);
-  ARM_DSB();
+	start &= ~(ssize - 1);
+	ARM_DSB();
 
-  do
-    {
-      /* The below store causes the cache to check its directory and
-       * determine if this address is contained in the cache. If so, it
-       * clean that cache line. Only the cache way containing the
-       * address is invalidated. If the address is not in the cache, then
-       * nothing is invalidated.
-       */
+	do {
+		/* The below store causes the cache to check its directory and
+		 * determine if this address is contained in the cache. If so, it
+		 * clean that cache line. Only the cache way containing the
+		 * address is invalidated. If the address is not in the cache, then
+		 * nothing is invalidated.
+		 */
 
-      putreg32(start, NVIC_DCCMVAC);
+		putreg32(start, NVIC_DCCMVAC);
 
-      /* Increment the address by the size of one cache line. */
+		/* Increment the address by the size of one cache line. */
 
-      start += ssize;
-    }
-  while (start < end);
+		start += ssize;
+	} while (start < end);
 
-  ARM_DSB();
-  ARM_ISB();
+	ARM_DSB();
+	ARM_ISB();
 #endif /* !CONFIG_ARMV7M_DCACHE_WRITETHROUGH */
 }
 #endif /* CONFIG_ARMV7M_DCACHE */
@@ -675,55 +642,50 @@ void cpu_clean_dcache(uintptr_t start, uintptr_t end)
  ****************************************************************************/
 
 #ifdef CONFIG_ARMV7M_DCACHE
-void cpu_clean_dcache_all(void)
-{
+void cpu_clean_dcache_all(void) {
 #ifndef CONFIG_ARMV7M_DCACHE_WRITETHROUGH
-  uint32_t ccsidr;
-  uint32_t sshift;
-  uint32_t wshift;
-  uint32_t sw;
-  uint32_t sets;
-  uint32_t ways;
+	uint32_t ccsidr;
+	uint32_t sshift;
+	uint32_t wshift;
+	uint32_t sw;
+	uint32_t sets;
+	uint32_t ways;
 
-  /* Get the characteristics of the D-Cache */
+	/* Get the characteristics of the D-Cache */
 
-  ccsidr = getreg32(NVIC_CCSIDR);
-  sets   = CCSIDR_SETS(ccsidr);          /* (Number of sets) - 1 */
-  sshift = CCSIDR_LSSHIFT(ccsidr) + 4;   /* log2(cache-line-size-in-bytes) */
-  ways   = CCSIDR_WAYS(ccsidr);          /* (Number of ways) - 1 */
+	ccsidr = getreg32(NVIC_CCSIDR);
+	sets = CCSIDR_SETS(ccsidr);			 /* (Number of sets) - 1 */
+	sshift = CCSIDR_LSSHIFT(ccsidr) + 4; /* log2(cache-line-size-in-bytes) */
+	ways = CCSIDR_WAYS(ccsidr);			 /* (Number of ways) - 1 */
 
-  /* Calculate the bit offset for the way field in the DCCSW register by
-   * counting the number of leading zeroes.  For example:
-   *
-   *   Number of  Value of ways  Field
-   *   Ways       'ways'         Offset
-   *     2         1             31
-   *     4         3             30
-   *     8         7             29
-   *   ...
-   */
+	/* Calculate the bit offset for the way field in the DCCSW register by
+	 * counting the number of leading zeroes.  For example:
+	 *
+	 *   Number of  Value of ways  Field
+	 *   Ways       'ways'         Offset
+	 *     2         1             31
+	 *     4         3             30
+	 *     8         7             29
+	 *   ...
+	 */
 
-  wshift = arm_clz(ways) & 0x1f;
+	wshift = arm_clz(ways) & 0x1f;
 
-  ARM_DSB();
+	ARM_DSB();
 
-  /* Clean the entire D-Cache */
+	/* Clean the entire D-Cache */
 
-  do
-    {
-      int32_t tmpways = ways;
+	do {
+		int32_t tmpways = ways;
 
-      do
-        {
-          sw = ((tmpways << wshift) | (sets << sshift));
-          putreg32(sw, NVIC_DCCSW);
-        }
-      while (tmpways--);
-    }
-  while (sets--);
+		do {
+			sw = ((tmpways << wshift) | (sets << sshift));
+			putreg32(sw, NVIC_DCCSW);
+		} while (tmpways--);
+	} while (sets--);
 
-  ARM_DSB();
-  ARM_ISB();
+	ARM_DSB();
+	ARM_ISB();
 #endif /* !CONFIG_ARMV7M_DCACHE_WRITETHROUGH */
 }
 #endif /* CONFIG_ARMV7M_DCACHE */
@@ -753,55 +715,51 @@ void cpu_clean_dcache_all(void)
  ****************************************************************************/
 
 #ifdef CONFIG_ARMV7M_DCACHE
-void cpu_flush_dcache(uintptr_t start, uintptr_t end)
-{
+void cpu_flush_dcache(uintptr_t start, uintptr_t end) {
 #ifndef CONFIG_ARMV7M_DCACHE_WRITETHROUGH
-  uint32_t ccsidr;
-  uint32_t sshift;
-  uint32_t ssize;
-  uint32_t sets;
-  uint32_t ways;
+	uint32_t ccsidr;
+	uint32_t sshift;
+	uint32_t ssize;
+	uint32_t sets;
+	uint32_t ways;
 
-  /* Get the characteristics of the D-Cache */
+	/* Get the characteristics of the D-Cache */
 
-  ccsidr = getreg32(NVIC_CCSIDR);
-  sshift = CCSIDR_LSSHIFT(ccsidr) + 4;   /* log2(cache-line-size-in-bytes) */
-  sets   = CCSIDR_SETS(ccsidr);          /* (Number of sets) - 1 */
-  ways   = CCSIDR_WAYS(ccsidr);          /* (Number of ways) - 1 */
+	ccsidr = getreg32(NVIC_CCSIDR);
+	sshift = CCSIDR_LSSHIFT(ccsidr) + 4; /* log2(cache-line-size-in-bytes) */
+	sets = CCSIDR_SETS(ccsidr);			 /* (Number of sets) - 1 */
+	ways = CCSIDR_WAYS(ccsidr);			 /* (Number of ways) - 1 */
 
-  /* Clean and invalidate the D-Cache over the range of addresses */
+	/* Clean and invalidate the D-Cache over the range of addresses */
 
-  ssize  = (1 << sshift);
+	ssize = (1 << sshift);
 
-  if ((end - start) >= ssize * (sets + 1) * (ways + 1))
-    {
-      return cpu_flush_dcache_all();
-    }
+	if ((end - start) >= ssize * (sets + 1) * (ways + 1)) {
+		return cpu_flush_dcache_all();
+	}
 
-  start &= ~(ssize - 1);
-  ARM_DSB();
+	start &= ~(ssize - 1);
+	ARM_DSB();
 
-  do
-    {
-      /* The below store causes the cache to check its directory and
-       * determine if this address is contained in the cache. If so, it clean
-       * and invalidate that cache line. Only the cache way containing the
-       * address is invalidated. If the address is not in the cache, then
-       * nothing is invalidated.
-       */
+	do {
+		/* The below store causes the cache to check its directory and
+		 * determine if this address is contained in the cache. If so, it clean
+		 * and invalidate that cache line. Only the cache way containing the
+		 * address is invalidated. If the address is not in the cache, then
+		 * nothing is invalidated.
+		 */
 
-      putreg32(start, NVIC_DCCIMVAC);
+		putreg32(start, NVIC_DCCIMVAC);
 
-      /* Increment the address by the size of one cache line. */
+		/* Increment the address by the size of one cache line. */
 
-      start += ssize;
-    }
-  while (start < end);
+		start += ssize;
+	} while (start < end);
 
-  ARM_DSB();
-  ARM_ISB();
+	ARM_DSB();
+	ARM_ISB();
 #else
-  cpu_invalidate_dcache(start, end);
+	cpu_invalidate_dcache(start, end);
 #endif /* !CONFIG_ARMV7M_DCACHE_WRITETHROUGH */
 }
 #endif /* CONFIG_ARMV7M_DCACHE */
@@ -829,57 +787,52 @@ void cpu_flush_dcache(uintptr_t start, uintptr_t end)
  ****************************************************************************/
 
 #ifdef CONFIG_ARMV7M_DCACHE
-void cpu_flush_dcache_all(void)
-{
+void cpu_flush_dcache_all(void) {
 #ifndef CONFIG_ARMV7M_DCACHE_WRITETHROUGH
-  uint32_t ccsidr;
-  uint32_t sshift;
-  uint32_t wshift;
-  uint32_t sw;
-  uint32_t sets;
-  uint32_t ways;
+	uint32_t ccsidr;
+	uint32_t sshift;
+	uint32_t wshift;
+	uint32_t sw;
+	uint32_t sets;
+	uint32_t ways;
 
-  /* Get the characteristics of the D-Cache */
+	/* Get the characteristics of the D-Cache */
 
-  ccsidr = getreg32(NVIC_CCSIDR);
-  sets   = CCSIDR_SETS(ccsidr);          /* (Number of sets) - 1 */
-  sshift = CCSIDR_LSSHIFT(ccsidr) + 4;   /* log2(cache-line-size-in-bytes) */
-  ways   = CCSIDR_WAYS(ccsidr);          /* (Number of ways) - 1 */
+	ccsidr = getreg32(NVIC_CCSIDR);
+	sets = CCSIDR_SETS(ccsidr);			 /* (Number of sets) - 1 */
+	sshift = CCSIDR_LSSHIFT(ccsidr) + 4; /* log2(cache-line-size-in-bytes) */
+	ways = CCSIDR_WAYS(ccsidr);			 /* (Number of ways) - 1 */
 
-  /* Calculate the bit offset for the way field in the DCCISW register by
-   * counting the number of leading zeroes.  For example:
-   *
-   *   Number of  Value of ways  Field
-   *   Ways       'ways'         Offset
-   *     2         1             31
-   *     4         3             30
-   *     8         7             29
-   *   ...
-   */
+	/* Calculate the bit offset for the way field in the DCCISW register by
+	 * counting the number of leading zeroes.  For example:
+	 *
+	 *   Number of  Value of ways  Field
+	 *   Ways       'ways'         Offset
+	 *     2         1             31
+	 *     4         3             30
+	 *     8         7             29
+	 *   ...
+	 */
 
-  wshift = arm_clz(ways) & 0x1f;
+	wshift = arm_clz(ways) & 0x1f;
 
-  ARM_DSB();
+	ARM_DSB();
 
-  /* Clean and invalidate the entire D-Cache */
+	/* Clean and invalidate the entire D-Cache */
 
-  do
-    {
-      int32_t tmpways = ways;
+	do {
+		int32_t tmpways = ways;
 
-      do
-        {
-          sw = ((tmpways << wshift) | (sets << sshift));
-          putreg32(sw, NVIC_DCCISW);
-        }
-      while (tmpways--);
-    }
-  while (sets--);
+		do {
+			sw = ((tmpways << wshift) | (sets << sshift));
+			putreg32(sw, NVIC_DCCISW);
+		} while (tmpways--);
+	} while (sets--);
 
-  ARM_DSB();
-  ARM_ISB();
+	ARM_DSB();
+	ARM_ISB();
 #else
-  cpu_invalidate_dcache_all();
+	cpu_invalidate_dcache_all();
 #endif /* !CONFIG_ARMV7M_DCACHE_WRITETHROUGH */
 }
 #endif /* CONFIG_ARMV7M_DCACHE */
@@ -903,21 +856,19 @@ void cpu_flush_dcache_all(void)
  ****************************************************************************/
 
 #ifdef CONFIG_ARMV7M_ICACHE
-void cpu_coherent_dcache(uintptr_t addr, size_t len)
-{
-  uintptr_t end;
+void cpu_coherent_dcache(uintptr_t addr, size_t len) {
+	uintptr_t end;
 
-  if (len > 0)
-    {
-      /* Flush any dirtcy D-Cache lines to memory */
+	if (len > 0) {
+		/* Flush any dirtcy D-Cache lines to memory */
 
-      end = addr + len;
-      cpu_clean_dcache(addr, end);
-      (void)(end);
+		end = addr + len;
+		cpu_clean_dcache(addr, end);
+		(void)(end);
 
-      /* Invalidate the entire I-Cache */
+		/* Invalidate the entire I-Cache */
 
-      cpu_invalidate_icache_all();
-    }
+		cpu_invalidate_icache_all();
+	}
 }
 #endif
