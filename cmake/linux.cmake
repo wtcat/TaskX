@@ -1,0 +1,3 @@
+set(THREADX_ARCH "linux")
+set(THREADX_TOOLCHAIN "gnu")
+set(THREAD_LINUX True)

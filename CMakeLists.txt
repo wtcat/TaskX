@@ -16,13 +16,19 @@ set(CMAKE_C_STANDARD   11)
 set(CMAKE_CXX_STANDARD 17)
 add_compile_options(
     -Wall
-    -O2
-    -Werror
+    -O0
+    -g
+    # -Werror
 )
 
 # ThreadX configuration
 set(THREADX_CUSTOM_PORT ${PROJECT_SOURCE_DIR}/board)
-set(TX_USER_FILE        ${PROJECT_SOURCE_DIR}/board/${THREADX_ARCH}/tx_user.h)
+if (THREAD_LINUX)
+  set(TX_EXTRA_LIB   pthread)
+else ()
+  set(TX_USER_FILE   ${PROJECT_SOURCE_DIR}/board/${THREADX_ARCH}/tx_user.h)
+  set(TX_EXTRA_LIB   )
+endif()
 
 
 # Core component
@@ -43,13 +49,16 @@ add_subdirectory(apps)
 # Generate target
 set(APP ${PROJECT_NAME}.elf)
 
-add_executable(${APP} 
-  main.c
-)
+if (THREAD_LINUX)
+  add_executable(${APP} tests/sample_threadx.c)
+else ()
+  add_executable(${APP} main.c)
+endif()
 
 collect_link_libraries(deplibs ${APP})
 target_link_libraries(${APP}
     ${deplibs}
+    ${TX_EXTRA_LIB}
 )
 
 # Post build
