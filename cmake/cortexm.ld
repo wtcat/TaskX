@@ -48,7 +48,12 @@ EXTERN(_vectors)
 ENTRY(_start)
 SECTIONS
 {
-    .itcm : AT(ORIGIN(REGION_TEXT) + 0x1000)
+    .vectors : 
+    {
+        *(.vectors)
+    } > REGION_TEXT
+
+    .itcm :
     {
         _itcm_text_start = .;
         *(.itcm*)
@@ -63,13 +68,12 @@ SECTIONS
         threadx/CMakeFiles/threadx.dir/common/src/tx_timer_system_activate.c.obj (.text*)
         threadx/CMakeFiles/threadx.dir/common/src/tx_timer_expiration_process.c.obj (.text*)
         _itcm_text_end = .;
-    }
+    } > REGION_FAST_TEXT AT > REGION_TEXT
     _itcm_text_load = LOADADDR(.itcm);
 
-    .text ORIGIN(REGION_TEXT):
+    .text :
     {
         _stext = ABSOLUTE(.);
-        *(.vectors)
         *(.text .text.*)
         *(.fixup)
         *(.gnu.warning)
