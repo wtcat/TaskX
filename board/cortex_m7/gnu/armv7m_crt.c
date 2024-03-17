@@ -153,12 +153,10 @@ void __fastfunc _armv7m_interrupt_dispatch(void) {
 #endif
 }
 
-volatile int _systick_intr_counter;
 void __fastfunc _armv7m_clock_handler(void) {
 #ifdef TX_ENABLE_EXECUTION_CHANGE_NOTIFY
     _tx_execution_isr_enter()
 #endif
-    _systick_intr_counter++;
     _tx_timer_interrupt();
 
 #ifdef TX_ENABLE_EXECUTION_CHANGE_NOTIFY
@@ -180,7 +178,8 @@ int cpu_irq_attatch(int irq, void (*isr)(void *), void *arg, int prio) {
     isr_entry_table[irq].handler = isr;
     TX_RESTORE
 
-    _ARMV7M_NVIC_Set_priority(irq, prio);
+    if (prio < 0)
+        _ARMV7M_NVIC_Set_priority(irq, prio);
     return cpu_irq_enable(irq);
 }
 
