@@ -64,7 +64,9 @@ if (NOT NX_USER_FILE)
 else()
     message(STATUS "Using custom nx_user.h file from ${NX_USER_FILE}")
 endif()
+
 configure_file(${NX_USER_FILE} ${CUSTOM_INC_DIR}/nx_user.h COPYONLY)
+
 target_include_directories(${PROJECT_NAME} 
     PUBLIC 
     ${CUSTOM_INC_DIR}

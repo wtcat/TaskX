@@ -569,7 +569,7 @@ void    _tx_linux_thread_resume(pthread_t thread_id);
 void    _tx_linux_thread_init(void);
 
 #ifndef TX_LINUX_MEMORY_SIZE
-#define TX_LINUX_MEMORY_SIZE                    64000
+#define TX_LINUX_MEMORY_SIZE                    (512 * 1024)
 #endif
 
 /* Define priorities of pthreads. */

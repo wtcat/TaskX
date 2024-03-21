@@ -23,13 +23,15 @@ add_compile_options(
 
 # ThreadX configuration
 set(THREADX_CUSTOM_PORT ${PROJECT_SOURCE_DIR}/board)
+# set(NETXDUO_CUSTOM_PORT ${THREADX_CUSTOM_PORT})
+
 if (THREAD_LINUX)
   set(TX_EXTRA_LIB   pthread)
 else ()
   set(TX_USER_FILE   ${PROJECT_SOURCE_DIR}/board/${THREADX_ARCH}/tx_user.h)
   set(TX_EXTRA_LIB   )
 endif()
-
+set(NX_USER_FILE  ${PROJECT_SOURCE_DIR}/board/${THREADX_ARCH}/nx_user.h)
 
 # Core component
 add_subdirectory(threadx)
@@ -50,7 +52,11 @@ add_subdirectory(apps)
 set(APP ${PROJECT_NAME}.elf)
 
 if (THREAD_LINUX)
-  add_executable(${APP} tests/sample_threadx.c)
+  if (CONFIG_NET)
+    add_executable(${APP} tests/demo_netx_nat.c)
+  else()
+    add_executable(${APP} tests/sample_threadx.c)
+  endif()
 else ()
   add_executable(${APP} main.c)
 endif()
