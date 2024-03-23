@@ -1,0 +1,12 @@
+menuconfig BASEWORK_UI
+    bool "Basework UI compoment"
+    default n
+
+if BASEWORK_UI
+
+config LVGL_ENCODER
+    bool "Enable encoder intput device for lvgl"
+    default n
+
+
+endif #BASEWORK_UI
