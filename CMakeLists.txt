@@ -17,7 +17,7 @@ set(CMAKE_CXX_STANDARD 17)
 add_compile_options(
     -Wall
     -O0
-    -g
+    -ggdb
     # -Werror
 )
 
@@ -53,7 +53,7 @@ set(APP ${PROJECT_NAME}.elf)
 
 if (THREAD_LINUX)
   if (CONFIG_NET)
-    add_executable(${APP} tests/demo_netx_nat.c)
+    add_executable(${APP} tests/demo_netx_duo_tcp.c)
   else()
     add_executable(${APP} tests/sample_threadx.c)
   endif()

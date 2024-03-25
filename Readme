@@ -1,2 +1,3 @@
 
 cmake -Bbuild -GNinja -DCMAKE_TOOLCHAIN_FILE=cmake/cortex_m7.cmake .
+cmake -Bbuild -GNinja -DCMAKE_TOOLCHAIN_FILE=cmake/linux.cmake -DCONFIG_NET=1

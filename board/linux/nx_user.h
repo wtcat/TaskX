@@ -78,7 +78,7 @@
    loopback interface. By default there is at least one physical interface
    in the system. */
 
-#define NX_MAX_PHYSICAL_INTERFACES    2
+#define NX_MAX_PHYSICAL_INTERFACES    1
 
 
 /* Defined, this option disables NetX Duo support on the 127.0.0.1 loopback interface.
@@ -144,9 +144,9 @@
 /* Configuration options for IPv6 */
 
 /* Disable IPv6 processing in NetX Duo.  */
-/*
+
 #define NX_DISABLE_IPV6
-*/
+
 
 /* Define the number of entries in IPv6 address pool. */
 /*
@@ -513,9 +513,9 @@
 /* Configuration options for fragmentation */
 
 /* Defined, this option disables both IPv4 and IPv6 fragmentation and reassembly logic.  */
-/*
+
 #define NX_DISABLE_FRAGMENTATION
-*/
+
 
 /* Defined, this option process IP fragmentation immediately.  */
 /*
@@ -770,6 +770,10 @@
 /*
 #define NX_ENABLE_TCPIP_OFFLOAD
 */
+
+#if defined(__x86_64__) && __x86_64__
+#define NX_THREAD_EXTENSION_PTR_GET(a, b, c)  (a) = (b *)(0x0000555500000000ULL | (c)); 
+#endif
 
 #endif
 
