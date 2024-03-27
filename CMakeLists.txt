@@ -6,6 +6,9 @@ project(app)
 enable_language(C CXX ASM)
 
 include(cmake/extensions.cmake)
+if (CMAKE_HOST_WIN32)
+    include(cmake/win32.cmake)
+endif()
 
 # Compile options
 include_directories(
@@ -14,12 +17,15 @@ include_directories(
 
 set(CMAKE_C_STANDARD   11)
 set(CMAKE_CXX_STANDARD 17)
-add_compile_options(
-    -Wall
-    -O0
-    -ggdb
-    # -Werror
-)
+
+if (CMAKE_HOST_UNIX)
+    add_compile_options(
+        -Wall
+        -O0
+        -ggdb
+        # -Werror
+    )
+endif()
 
 # ThreadX configuration
 set(THREADX_CUSTOM_PORT ${PROJECT_SOURCE_DIR}/board)
@@ -51,12 +57,8 @@ add_subdirectory(apps)
 # Generate target
 set(APP ${PROJECT_NAME}.elf)
 
-if (THREAD_LINUX)
-  if (CONFIG_NET)
-    add_executable(${APP} tests/demo_netx_duo_tcp.c)
-  else()
-    add_executable(${APP} tests/sample_threadx.c)
-  endif()
+if (CONFIG_NET)
+  add_executable(${APP} tests/demo_netx_duo_tcp.c)
 else ()
   add_executable(${APP} main.c)
 endif()
@@ -68,9 +70,11 @@ target_link_libraries(${APP}
 )
 
 # Post build
-add_custom_command(
-  TARGET  ${APP}
-  POST_BUILD
-  COMMAND ${CMAKE_OBJCOPY} -Obinary ${APP} ${PROJECT_NAME}.bin
-  COMMAND ${CMAKE_OBJDUMP} -d ${APP} > ${PROJECT_NAME}.lst
-)
+if (NOT CMAKE_HOST_WIN32)
+    add_custom_command(
+      TARGET  ${APP}
+      POST_BUILD
+      COMMAND ${CMAKE_OBJCOPY} -Obinary ${APP} ${PROJECT_NAME}.bin
+      COMMAND ${CMAKE_OBJDUMP} -d ${APP} > ${PROJECT_NAME}.lst
+    )
+endif()

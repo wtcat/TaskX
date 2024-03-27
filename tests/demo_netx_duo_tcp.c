@@ -3,8 +3,6 @@
    Stateless Address Configuration for IPv6, ARP for IPv4, and
    TCP packet sending and receiving with a simulated Ethernet driver.  */
 
-#include <unistd.h>
-
 #include   "tx_api.h"
 #include   "nx_api.h"
 
