@@ -5,7 +5,7 @@
 
 /* Compiler specific definitions for Clang compiler */
 #define rte_likely(x)   __builtin_expect(!!(x), 1)
-#define rte_unlikely(x) __builtin_expect(!!(x), 1)
+#define rte_unlikely(x) __builtin_expect(!!(x), 0)
 
 /* same as gcc, this was present in clang-2.6 so we can assume it works
  * with any version that can compile the kernel

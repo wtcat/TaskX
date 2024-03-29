@@ -12,7 +12,7 @@
 
 
 #define rte_likely(x)   __builtin_expect(!!(x), 1)
-#define rte_unlikely(x) __builtin_expect(!!(x), 1)
+#define rte_unlikely(x) __builtin_expect(!!(x), 0)
 
 #ifdef CONFIG_RETPOLINE
 #define __noretpoline __attribute__((__indirect_branch__("keep")))
