@@ -140,7 +140,8 @@ ssize_t buffered_read(struct buffered_io *bio, void *buf, size_t size,
      * read it again from the cache
      */
     if (bio->dirty) {
-        MTX_LOCK(&bio->mtx);
+        if (rte_likely(!bio->panic))
+            MTX_LOCK(&bio->mtx);
 
         /* 
          * We'll have to read it again because other threads 
@@ -165,7 +166,8 @@ ssize_t buffered_read(struct buffered_io *bio, void *buf, size_t size,
                 );
             }
         }
-        MTX_UNLOCK(&bio->mtx);
+        if (rte_likely(!bio->panic))
+            MTX_UNLOCK(&bio->mtx);
     }
 
     return size;
@@ -215,7 +217,7 @@ ssize_t buffered_write(struct buffered_io *bio, const void *buf, size_t size,
                 goto _unlock;
 
             /* Read a block of data into a buffer */
-            ret = disk_device_read(bio->dd, bio->buf, sizeof(bio->buf), 
+            ret = disk_device_read(bio->dd, bio->buf, bio->size,
                 aligned_ofs);
             if (ret < 0)
                 goto _unlock;

@@ -4,11 +4,6 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <errno.h>
-#ifdef __ZEPHYR__
-#include <posix/pthread.h>
-#else
-#include <pthread.h>
-#endif
 
 #include "basework/dev/disk.h"
 #include "basework/dev/partition.h"
@@ -53,11 +48,11 @@ struct disklog_ctx {
 
 #define DISLOG_SWAP_PERIOD (3600 * 1000) //1 hour
 
-#define MTX_TRYLOCK() pthread_mutex_trylock(&logctx.mtx)
-#define MTX_LOCK()    pthread_mutex_lock(&logctx.mtx)
-#define MTX_UNLOCK()  pthread_mutex_unlock(&logctx.mtx)
-#define MTX_INIT()    pthread_mutex_init(&logctx.mtx, NULL)
-#define MTX_UNINIT()  pthread_mutex_destroy(&logctx.mtx)
+#define MTX_TRYLOCK() os_mtx_trylock(&logctx.mtx)
+#define MTX_LOCK()    os_mtx_lock(&logctx.mtx)
+#define MTX_UNLOCK()  os_mtx_unlock(&logctx.mtx)
+#define MTX_INIT()    os_mtx_init(&logctx.mtx, NULL)
+
 
 static struct disklog_ctx logctx;
 
@@ -110,10 +105,10 @@ void disklog_reset(void) {
 void disklog_flush(void) {
 	assert(logctx.bio != NULL);
 	if (logctx.bio->panic) {
+		buffered_flush_locked(logctx.bio);
 		disk_device_erase(logctx.bio->dd, logctx.offset, logctx.blksz);
 		disk_device_write(logctx.bio->dd, &logctx.file, 
 			sizeof(logctx.file), logctx.offset);
-		buffered_flush_locked(logctx.bio);
 	} else {
 	    int ret = buffered_write(logctx.bio, &logctx.file, 
 	        sizeof(logctx.file), logctx.offset);
@@ -182,9 +177,8 @@ int disklog_input(const char *buf, size_t size) {
     if (buf == NULL || size == 0)
         return -EINVAL;
 
-    if (logctx.read_locked){
+    if (logctx.read_locked)
         return -EBUSY;
-	}
 
 	bio = logctx.bio;
 	if (rte_likely(!bio->panic)) {
@@ -202,7 +196,7 @@ int disklog_input(const char *buf, size_t size) {
         bytes = MIN(filp->end - wr_ofs, remain);
         ret = buffered_write(bio, buf, bytes, 
             logctx.offset + wr_ofs);
-        if (ret <= 0) 
+        if (ret < 0) 
             goto _next;
         
         remain -= bytes;
@@ -260,7 +254,6 @@ int disklog_ouput(bool (*output)(void *ctx, char *buf, size_t size),
         if (ret <= 0)
             goto _next;
 		
-        pr_dbg("%s\n", buffer);
         if (!output(ctx, buffer, bytes)) {
             ret = -EIO;
             goto _next;
@@ -271,7 +264,10 @@ int disklog_ouput(bool (*output)(void *ctx, char *buf, size_t size),
         if (rd_ofs >= filp->end)
             rd_ofs = filp->start;
     }
-    ret = 0;
+    
+	filp->rd_ofs = filp->wr_ofs = rd_ofs;
+	filp->d_size = 0;
+	ret = 0;
 _next:
     MTX_UNLOCK();
 	logctx.upload_pending = false;
