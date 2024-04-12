@@ -24,7 +24,9 @@ struct mp_info {
 
 #define NOR_LOG_SIZE 9 
 #define NOR_SECTOR_SIZE (1 << NOR_LOG_SIZE)
-#if !defined(CONFIG_PTFS) && !defined(CONFIG_PAGEFS)
+#if !defined(CONFIG_PTFS) && \
+	!defined(CONFIG_PAGEFS) && \
+	!defined(CONFIG_XIPFS)
 #define MP_TBSIZE 3
 #else
 #define MP_TBSIZE 2
@@ -33,7 +35,9 @@ struct mp_info {
 static const struct mp_info mp_table[] = {
     {"filesystem", "UD0", "/UD0:", UINT32_MAX},
     {"firmware",   "UD1", "/UD1:", 0x1c2000},  /* Limit to 1.8MB */
-#if !defined(CONFIG_PTFS) && !defined(CONFIG_PAGEFS)
+#if !defined(CONFIG_PTFS) && \
+	!defined(CONFIG_PAGEFS) && \
+	!defined(CONFIG_XIPFS)
     {"udisk",      "UD2", "/UD2:", UINT32_MAX},  /* just only for  */
 #endif
 };

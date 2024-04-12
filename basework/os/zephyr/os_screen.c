@@ -335,7 +335,7 @@ static int screen_pm_control(const struct device *dev,
             } 
         }
 #endif /* CONFIG_FADE_LOW_POWER */
-        screen_active(SCREEN_ON_DEFAULT);
+		screen_active(SCREEN_ON_DEFAULT);
         pr_dbg("screen_pm_control: resume\n");
 		break;
 	default:

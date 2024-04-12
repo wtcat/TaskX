@@ -141,6 +141,13 @@ int msg_storage_flush(void);
 int msg_storage_get_newidx(void);
 
 /*
+ * msg_storage_get_node_newidx - Get the new index of message linked list
+ *
+ * return new index of linked list
+ */
+int msg_storage_get_node_newidx(void);
+
+/*
  * msg_storage_init - Initialize message database
  *
  * return 0 if success

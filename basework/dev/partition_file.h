@@ -21,6 +21,13 @@ struct sfile;
 #define SFILE_SIZE(n) ((n) + SFILE_METADATA_SIZE)
 
 /*
+ * usr_sfile_init - Initialize partition file
+ *
+ * return 0 if success
+ */
+int usr_sfile_init(void);
+
+/*
  * usr_sfile_open - Open a partition file
  *
  * @name: file name

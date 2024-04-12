@@ -37,6 +37,9 @@ typedef struct lvgl_img_loader_ops {
 	void (*preload)(struct lvgl_img_loader * loader, uint16_t index);
 	/* get image count */
 	uint16_t (*get_count)(struct lvgl_img_loader * loader);
+
+	/* free all resources */
+	void (*destroy)(struct lvgl_img_loader * loader);
 } lvgl_img_loader_ops_t;
 
 typedef struct lvgl_img_loader {
@@ -44,6 +47,8 @@ typedef struct lvgl_img_loader {
 	union {
 		void *user_data;
 	};
+
+	void *r;
 } lvgl_img_loader_t;
 
 
@@ -139,6 +144,20 @@ lvgl_img_loader_preload(lvgl_img_loader_t *loader,
 {
 	if (loader->i_ops->preload)
 		loader->i_ops->preload(loader, index);		
+}
+
+/**
+ * Destroy image loader
+ *
+ * @param loader pointer to structure lvgl_img_loader
+ *
+ * @retval N/A
+ */
+static inline void 
+lvgl_img_loader_destroy(lvgl_img_loader_t *loader)
+{
+	if (loader->i_ops && loader->i_ops->destroy)
+		loader->i_ops->destroy(loader);		
 }
 
 #ifdef __cplusplus

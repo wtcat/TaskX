@@ -20,7 +20,7 @@
 #include "basework/malloc.h"
 
 struct file {
-    struct file_base base;
+    struct file_class *vfs;
     struct xip_file *fp;
 };
 
@@ -156,6 +156,12 @@ static void *xipfs_impl_map(os_file_t fd, size_t *size) {
 
 static struct file os_files[CONFIG_OS_MAX_FILES] __rte_section(".ram.noinit");
 static struct file_class xipfs_class = {
+	.mntpoint   = "/XIPFS:",
+	.next       = NULL,
+	.fds_buffer = os_files,
+	.fds_size   = sizeof(os_files),
+	.fd_size    = sizeof(os_files[0]),
+
     .open = xipfs_impl_open,
     .close = xipfs_impl_close,
     .ioctl = xipfs_impl_ioctl,
@@ -176,10 +182,6 @@ static struct file_class xipfs_class = {
 };
 
 static int __rte_unused xipfs_impl_register(const struct device *dev) {
-    static struct vfs_node xipfs_vfs = {
-        .mntpoint = "/XIPFS:",
-        .vfs = &xipfs_class
-    };
     uint32_t offset;
     int err;
     (void) dev;
@@ -205,10 +207,8 @@ static int __rte_unused xipfs_impl_register(const struct device *dev) {
         return err;
     pr_notice("## XIP filesystem registed start(0x%x) size(%d)\n", 
         offset, CONFIG_XIPFS_SIZE);
-    err = os_obj_initialize(&xipfs_class.robj, os_files, 
-        sizeof(os_files), sizeof(os_files[0]));
-    assert(err == 0);
-    return vfs_register(&xipfs_vfs);
+
+    return vfs_register(&xipfs_class);
 }
 
 #ifndef CONFIG_CARD_READER_APP

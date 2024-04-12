@@ -24,7 +24,7 @@ struct screen_operations {
 };
 
 struct screen_context {
-    pthread_mutex_t lock;
+    os_mutex_t lock;
     const struct screen_operations *state;
     const struct scrmgr_ops *sm_ops;
     struct observer_base *obs_list;
@@ -53,9 +53,9 @@ do {\
 #define SCREEN_STATE_SET(_sc, _sta) \
     (_sc)->sm_ops->screen_set(_sta, (uint8_t)(_sc)->brightness);
 
-#define MTX_INIT()    pthread_mutex_init(&sc->lock, NULL)
-#define MTX_LOCK()    pthread_mutex_lock(&sc->lock) 
-#define MTX_UNLOCK()  pthread_mutex_unlock(&sc->lock) 
+#define MTX_INIT()    os_mtx_init(&sc->lock, 0)
+#define MTX_LOCK()    os_mtx_lock(&sc->lock) 
+#define MTX_UNLOCK()  os_mtx_unlock(&sc->lock) 
 
 static int normal_state_active(struct screen_context *sc, int sec);
 static int normal_state_deactive(struct screen_context *sc);

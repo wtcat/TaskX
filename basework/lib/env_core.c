@@ -16,8 +16,8 @@
 
 //TODO: Should use mutex lock at later
 #ifndef CONFIG_BOOTLOADER
- # define ENV_LOCK   pthread_mutex_lock(&reent_ptr->mtx);
- # define ENV_UNLOCK pthread_mutex_unlock(&reent_ptr->mtx);
+ # define ENV_LOCK   os_mtx_lock(&reent_ptr->mtx);
+ # define ENV_UNLOCK os_mtx_unlock(&reent_ptr->mtx);
 #else
  # define ENV_LOCK
  # define ENV_UNLOCK

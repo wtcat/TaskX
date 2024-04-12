@@ -22,7 +22,7 @@
 #include "basework/malloc.h"
 
 struct file {
-    struct file_base base;
+	struct file_class *vfs;
     struct fs_file_t zfp;
 };
 
@@ -184,7 +184,13 @@ static int zephyr_fs_sync(os_filesystem_t fs) {
 }
 
 static struct file os_files[CONFIG_OS_MAX_FILES];
-struct file_class zephyr_file_class = {
+static struct file_class zephyr_file_class = {
+	.mntpoint    = NULL,
+	.next        = NULL,
+	.fds_buffer  = os_files,
+	.fds_size    = sizeof(os_files),
+	.fd_size     = sizeof(os_files[0]),
+
     .open = zephyr_fs_open,
     .close = zephyr_fs_close,
     .ioctl = zephyr_fs_ioctl,
@@ -205,15 +211,7 @@ struct file_class zephyr_file_class = {
 };
 
 static int __rte_notrace zephyr_fs_init(const struct device *dev __rte_unused) {
-    static struct vfs_node zephyr_vfs = {
-        .mntpoint = NULL,
-        .vfs = &zephyr_file_class
-    };
-    int err = os_obj_initialize(&zephyr_file_class.robj, os_files, 
-        sizeof(os_files), sizeof(os_files[0]));
-    (void) err;
-    assert(err == 0);
-    return vfs_register(&zephyr_vfs);
+	return vfs_register(&zephyr_file_class);
 }
 
 SYS_INIT(zephyr_fs_init, APPLICATION, 0);

@@ -47,7 +47,7 @@ struct msg_context {
     struct msg_notifstate state;
     const struct msg_fops *f_ops;
     struct observer_base obs;
-    pthread_mutex_t lock;
+    os_mutex_t lock;
     os_timer_t timer;
     void *fd;
     DECLARE_KFIFO(fifo, uint16_t, 32);
@@ -55,12 +55,13 @@ struct msg_context {
     void *user_data;
     bool dirty; /* mean to the message database has been modified */
     bool state_dirty;
+    uint16_t new_idx;
 };
 
-#define MTX_LOCK()   (void)pthread_mutex_lock(&msg_context.lock)
-#define MTX_UNLOCK() (void)pthread_mutex_unlock(&msg_context.lock)
-#define MTX_INIT()   (void)pthread_mutex_init(&msg_context.lock, NULL)
-#define MTX_DEINIT() (void)pthread_mutex_destroy(&msg_context.lock)
+#define MTX_LOCK()   (void)os_mtx_lock(&msg_context.lock)
+#define MTX_UNLOCK() (void)os_mtx_unlock(&msg_context.lock)
+#define MTX_INIT()   (void)os_mtx_init(&msg_context.lock, 0)
+
 
 static struct msg_context msg_context;
 
@@ -286,6 +287,7 @@ static int msg_content_write(struct msg_context *ctx,
     msg_mark_dirty(ctx);
     kfifo_put(&ctx->fifo, (uint16_t)index);
     *idx = index;
+    ctx->new_idx = index;
     pr_dbg("write message(idx: %d) completed\n", index);
     return 0;
 _failed:
@@ -443,6 +445,12 @@ int msg_storage_get_newidx(void) {
     if (!kfifo_get(&ctx->fifo, &val))
         return -ENODATA;
     return val;
+}
+
+int msg_storage_get_node_newidx(void) {
+    struct msg_context *ctx = &msg_context;
+
+    return ctx->new_idx;
 }
 
 int msg_storage_clean(void) {
@@ -607,6 +615,6 @@ int __rte_notrace msg_storage_deinit(void) {
         ctx->fd = NULL;
     }
     MTX_UNLOCK();
-    MTX_DEINIT();
+
     return 0;
 }

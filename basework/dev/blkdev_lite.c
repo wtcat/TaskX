@@ -150,6 +150,18 @@ static int flush_cache_block(struct disk_device *dd) {
     return 0;
 }
 
+static int __blkdev_sync(bool invalid) {
+    int err = 0;
+    if (blk_buffer.dirty) {
+        MTX_LOCK();
+        err = flush_cache_block(blk_buffer.dd);
+	    if (invalid && err == 0)
+			blk_buffer.offset = UINT32_MAX;
+        MTX_UNLOCK();
+    }
+    return err;
+}
+
 ssize_t blkdev_read(struct disk_device *dd, void *buf, size_t size, 
     uint32_t offset) {
     int err = disk_device_read(dd, buf, size, offset);
@@ -267,13 +279,11 @@ _exit:
 }
 
 int blkdev_sync(void) {
-    int err = 0;
-    if (blk_buffer.dirty) {
-        MTX_LOCK();
-        err = flush_cache_block(blk_buffer.dd);
-        MTX_UNLOCK();
-    }
-    return err;
+	return __blkdev_sync(false);
+}
+
+int blkdev_sync_invalid(void) {
+	return __blkdev_sync(true);
 }
 
 int blkdev_init(void) {

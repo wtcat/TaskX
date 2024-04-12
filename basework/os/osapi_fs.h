@@ -6,22 +6,22 @@
 #ifndef BASEWORK_OS_OSAPI_FS_H_
 #define BASEWORK_OS_OSAPI_FS_H_
 
+#include <assert.h>
+#include <errno.h>
+#include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <errno.h>
-#include <assert.h>
-#include <limits.h>
 #include <sys/types.h>
 
 #include "basework/os/osapi_obj.h"
 
 #ifdef __cplusplus
-extern "C"{
+extern "C" {
 #endif
 
 #ifdef _MSC_VER
-	#define __ssize_t_defined
-    typedef long int ssize_t;
+#define __ssize_t_defined
+typedef long int ssize_t;
 #endif
 
 #ifndef MAX_FILE_NAME
@@ -36,21 +36,20 @@ struct dirent;
 
 #define VFS_O_RDONLY 0
 #define VFS_O_WRONLY 1
-#define VFS_O_RDWR   2
-#define VFS_O_MASK   3
+#define VFS_O_RDWR 2
+#define VFS_O_MASK 3
 
-#define VFS_O_CREAT  0x0200
+#define VFS_O_CREAT 0x0200
 #define VFS_O_APPEND 0x0008
 
+#define VFS_SEEK_SET 0 /* Seek from beginning of file.  */
+#define VFS_SEEK_CUR 1 /* Seek from current position.  */
+#define VFS_SEEK_END 2 /* Set file pointer to EOF plus "offset" */
 
-#define VFS_SEEK_SET        0  /* Seek from beginning of file.  */
-#define VFS_SEEK_CUR        1  /* Seek from current position.  */
-#define VFS_SEEK_END        2  /* Set file pointer to EOF plus "offset" */
-
-/* 
- * File I/O control type 
+/*
+ * File I/O control type
  */
-#define VFS_IOSET_FILESIZE  0x0100
+#define VFS_IOSET_FILESIZE 0x0100
 
 struct vfs_stat {
 	unsigned long st_size; /* File size */
@@ -59,63 +58,61 @@ struct vfs_stat {
 };
 
 struct vfs_dirent {
-  uint8_t d_type; /* Type of file */
-#define DT_REG 0  /* file type */
-#define DT_DIR 1  /* directory type*/
-  char d_name[MAX_FILE_NAME + 1];  /* File name */
+	uint8_t d_type;					/* Type of file */
+#define DT_REG 0					/* file type */
+#define DT_DIR 1					/* directory type*/
+	char d_name[MAX_FILE_NAME + 1]; /* File name */
 };
 #undef MAX_FILE_NAME
 
 typedef struct {
-  os_file_t fd;
-  struct vfs_dirent entry;
-  void *data;
+	os_file_t fd;
+	struct vfs_dirent entry;
+	void *data;
 } VFS_DIR;
 
 struct file_class {
-    /* File operations */
-    int (*open)     (os_file_t fd, const char *path, int flags);
-    int (*close)    (os_file_t fd);
-    int (*ioctl)    (os_file_t fd, int cmd, void *args);
-    ssize_t (*read) (os_file_t fd, void *buf, size_t count);
-    ssize_t (*write)(os_file_t fd, const void *buf, size_t count);
-    int (*flush)    (os_file_t fd);
-    int (*lseek)    (os_file_t fd, off_t offset, int whence);
-    int (*getdents) (os_file_t fd, struct dirent *dirp, uint32_t count);
-    int (*truncate) (os_file_t fd, off_t length);
-    off_t (*tell)   (os_file_t fd);
-    // int (*poll)     (os_file_t *fd, struct rt_pollreq *req);
+	/* Mount point */
+	const char *mntpoint;
 
-    /* Directory operations */
-    int (*opendir)(const char *path, VFS_DIR *dirp);
-    int (*readdir)(VFS_DIR *dirp, struct vfs_dirent *entry);
-    int (*closedir)(VFS_DIR *dirp);
+	/* Link to sibling node */
+	struct file_class *next;
 
-    /* XIP map*/
-    void *(*mmap)(os_file_t fd, size_t *size);
+	/* File descriptor list */
+	struct os_robj avalible_fds;
+	void *fds_buffer;
+	size_t fds_size;
+	size_t fd_size;
 
-    /* filesystem operations */
-    int (*fssync)   (os_filesystem_t fs);
-    int (*mkdir)    (os_filesystem_t fs, const char *pathname);
-    int (*unlink)   (os_filesystem_t fs, const char *pathname);
-    int (*stat)     (os_filesystem_t fs, const char *filename, struct vfs_stat *buf);
-    int (*rename)   (os_filesystem_t fs, const char *oldpath, const char *newpath);
+	/* File operations */
+	int (*open)(os_file_t fd, const char *path, int flags);
+	int (*close)(os_file_t fd);
+	int (*ioctl)(os_file_t fd, int cmd, void *args);
+	ssize_t (*read)(os_file_t fd, void *buf, size_t count);
+	ssize_t (*write)(os_file_t fd, const void *buf, size_t count);
+	int (*flush)(os_file_t fd);
+	int (*lseek)(os_file_t fd, off_t offset, int whence);
+	int (*getdents)(os_file_t fd, struct dirent *dirp, uint32_t count);
+	int (*truncate)(os_file_t fd, off_t length);
+	off_t (*tell)(os_file_t fd);
+	// int (*poll)     (os_file_t *fd, struct rt_pollreq *req);
 
-    int (*reset)   (os_filesystem_t fs);
+	/* Directory operations */
+	int (*opendir)(const char *path, VFS_DIR *dirp);
+	int (*readdir)(VFS_DIR *dirp, struct vfs_dirent *entry);
+	int (*closedir)(VFS_DIR *dirp);
 
-    /* Resource object */
-    struct os_robj robj;
-};
+	/* XIP map*/
+	void *(*mmap)(os_file_t fd, size_t *size);
 
-struct file_base {
-    struct file_class *f_class;
-    // unsigned int flags;
-};
+	/* filesystem operations */
+	int (*fssync)(os_filesystem_t fs);
+	int (*mkdir)(os_filesystem_t fs, const char *pathname);
+	int (*unlink)(os_filesystem_t fs, const char *pathname);
+	int (*stat)(os_filesystem_t fs, const char *filename, struct vfs_stat *buf);
+	int (*rename)(os_filesystem_t fs, const char *oldpath, const char *newpath);
 
-struct vfs_node {
-    struct file_class *vfs;
-    struct vfs_node *next;
-    const char *mntpoint;
+	int (*reset)(os_filesystem_t fs);
 };
 
 /*
@@ -160,10 +157,10 @@ ssize_t vfs_read(os_file_t fd, void *buf, size_t len);
 ssize_t vfs_write(os_file_t fd, const void *buf, size_t len);
 
 /*
- * vfs_tell - Obtain the position of file pointer 
+ * vfs_tell - Obtain the position of file pointer
  *
  * @fd: file descriptor
- * return the offset of file pointer 
+ * return the offset of file pointer
  */
 off_t vfs_tell(os_file_t fd);
 
@@ -176,7 +173,7 @@ off_t vfs_tell(os_file_t fd);
 int vfs_flush(os_file_t fd);
 
 /*
- * vfs_lseek - Set offset for file pointer 
+ * vfs_lseek - Set offset for file pointer
  *
  * @fd: file descriptor
  * @offset: file offset
@@ -184,7 +181,6 @@ int vfs_flush(os_file_t fd);
  * return 0 if success
  */
 int vfs_lseek(os_file_t fd, off_t offset, int whence);
-
 
 /*
  * vfs_ftruncate - Change file size
@@ -263,9 +259,8 @@ int vfs_stat(const char *path, struct vfs_stat *buf);
  * @arg: user parameter
  * return 0 if success
  */
-int vfs_dir_foreach(const char *path, 
-    bool (*iterator)(struct vfs_dirent *dirent, void *), 
-    void *arg);
+int vfs_dir_foreach(const char *path, bool (*iterator)(struct vfs_dirent *dirent, void *),
+					void *arg);
 
 /*
  * vfs_sync - Flush filesystem cache to disk
@@ -275,7 +270,7 @@ int vfs_dir_foreach(const char *path,
 int vfs_sync(void);
 
 /*
- * vfs_reset - Reset filesystem data 
+ * vfs_reset - Reset filesystem data
  * Warnning: This operation will cause all files to be deleted
  *
  * @mpt: mount point
@@ -295,7 +290,7 @@ void *vfs_mmap(os_file_t fd, size_t *size);
 /*
  * vfs_register - Register a filesystem
  */
-int vfs_register(struct vfs_node *vnode);
+int vfs_register(struct file_class *vfs);
 
 #ifdef __cplusplus
 }

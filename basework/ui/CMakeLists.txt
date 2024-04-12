@@ -10,6 +10,12 @@ zephyr_library_sources(
 )
 endif()
 
+if (CONFIG_LVGL_LAZY_DECOMP)
+zephyr_library_sources(
+	lvgl_lazydecomp.c
+)
+endif()
+
 add_subdirectory(widget)
 zephyr_library_sources_ifdef(CONFIG_MEM_MONITOR  lvgl_mon.c)
 zephyr_library_link_libraries(lvgl)

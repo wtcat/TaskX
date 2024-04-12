@@ -6,11 +6,6 @@
 #define pr_fmt(fmt) "blkdev: "fmt
 #include <assert.h>
 #include <string.h>
-#ifdef __ZEPHYR__
-#include <posix/pthread.h>
-#else
-#include <pthread.h>
-#endif
 
 #include "basework/container/list.h"
 #include "basework/dev/disk.h"
@@ -19,6 +14,7 @@
 #include "basework/dev/blkdev.h"
 #include "basework/malloc.h"
 #include "basework/os/osapi_timer.h"
+#include "basework/os/osapi.h"
 
 
 #ifndef CONFIG_BLKDEV_NR_BUFS
@@ -59,12 +55,12 @@ struct bh_statitics {
     long cache_missed;
 };
 
-#define MTX_LOCK()   pthread_mutex_lock(&bh_mtx)
-#define MTX_UNLOCK() pthread_mutex_unlock(&bh_mtx)
-#define MTX_LOCK_INIT() pthread_mutex_init(&bh_mtx, NULL)
-#define MTX_LOCK_UNINIT() pthread_mutex_destroy(&bh_mtx)
+#define MTX_LOCK()   os_mtx_lock(&bh_mtx)
+#define MTX_UNLOCK() os_mtx_unlock(&bh_mtx)
+#define MTX_LOCK_INIT() os_mtx_init(&bh_mtx, 0)
 
-static pthread_mutex_t bh_mtx;
+
+static os_mutex_t bh_mtx;
 static os_timer_t bh_timer;
 static void *bh_buffer;
 static bool bh_initialized;
@@ -357,16 +353,13 @@ int blkdev_destroy(void) {
     }
     bh_initialized = false;
     MTX_UNLOCK();
-    MTX_LOCK_UNINIT();
     return 0;
 }
 
 void blkdev_print(void) {
-#undef pr_fmt
-#define pr_fmt(fmt) fmt
     struct bh_statitics *stat = &bh_statistics;
-    pr_notice("\n=========== Block Device Statistics ==========\n");
-    pr_notice("Cache Hits: %ld\nCache Missed: %ld\nCache Hit-Rate: %ld%%\n\n",
+    pr_out("\n=========== Block Device Statistics ==========\n");
+    pr_out("Cache Hits: %ld\nCache Missed: %ld\nCache Hit-Rate: %ld%%\n\n",
         stat->cache_hits,
         stat->cache_missed,
         (stat->cache_hits * 100) / (stat->cache_hits + stat->cache_missed)

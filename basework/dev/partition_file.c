@@ -12,11 +12,8 @@
 #include <assert.h>
 #include <string.h>
 #include <sys/types.h>
-#ifdef __ZEPHYR__
-#include <posix/pthread.h>
-#else
-#include <pthread.h>
-#endif
+
+#include "basework/os/osapi.h"
 #include "basework/dev/partition_file.h"
 #include "basework/dev/partition.h"
 #include "basework/dev/disk.h"
@@ -49,15 +46,10 @@ struct sfile {
 
 STATIC_ASSERT(SFILE_METADATA_SIZE == sizeof(struct sfile_metadata), "");
 
-#define SFILE_MTX_LOCK()   pthread_mutex_lock(&sfile_mtx)
-#define SFILE_MTX_UNLOCK() pthread_mutex_unlock(&sfile_mtx)
+#define SFILE_MTX_LOCK()   os_mtx_lock(&sfile_mtx)
+#define SFILE_MTX_UNLOCK() os_mtx_unlock(&sfile_mtx)
 
-#ifdef __ZEPHYR__
-static PTHREAD_MUTEX_DEFINE(sfile_mtx);
-#else
-static pthread_mutex_t sfile_mtx = PTHREAD_MUTEX_INITIALIZER;
-#endif
-
+static os_mutex_t sfile_mtx;
 static struct sfile *sfile_head;
 
 static inline ssize_t sfile_read(struct sfile *fp, void *buf, 
@@ -332,3 +324,9 @@ _unlock:
     SFILE_MTX_UNLOCK();
     return err;
 }
+
+int usr_sfile_init(void) {
+    os_mtx_init(&sfile_mtx, 0);
+    return 0;
+}
+

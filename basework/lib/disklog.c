@@ -28,7 +28,7 @@ struct disk_log {
 
 struct disklog_ctx {
     struct disk_log file;
-    pthread_mutex_t mtx;
+    os_mutex_t mtx;
     os_timer_t timer;
     struct buffered_io *bio;
     uint32_t offset;
@@ -46,12 +46,12 @@ struct disklog_ctx {
 #define MIN(a, b) ((a) < (b)? (a): (b))
 #endif
 
-#define DISLOG_SWAP_PERIOD (3600 * 1000) //1 hour
+#define DISLOG_SWAP_PERIOD (12 * 3600 * 1000ul) //12 hour
 
 #define MTX_TRYLOCK() os_mtx_trylock(&logctx.mtx)
 #define MTX_LOCK()    os_mtx_lock(&logctx.mtx)
 #define MTX_UNLOCK()  os_mtx_unlock(&logctx.mtx)
-#define MTX_INIT()    os_mtx_init(&logctx.mtx, NULL)
+#define MTX_INIT()    os_mtx_init(&logctx.mtx, 0)
 
 
 static struct disklog_ctx logctx;
@@ -69,14 +69,23 @@ static void disklog_reset_locked(void) {
     filp->d_size = 0;
 }
 
-static void disklog_sync(void) {
+static void disklog_sync(bool wait) {
     if (logctx.log_dirty) {
-        MTX_LOCK();
-        if (logctx.log_dirty) {
-            logctx.log_dirty = false;
-            disklog_flush();
-        }
-        MTX_UNLOCK();
+    	int err;
+    
+	    if (wait){
+	        err = MTX_LOCK();
+	    } else {
+	    	err = MTX_TRYLOCK();
+		}
+
+		if (err == 0) {
+	        if (logctx.log_dirty) {
+	            logctx.log_dirty = false;
+	            disklog_flush();
+	        }
+	        MTX_UNLOCK();
+	    }
     }
 }
 
@@ -85,13 +94,13 @@ static int disklog_sync_listen(struct observer_base *nb,
     (void) data;
     (void) nb;
     (void) action;
-    disklog_sync();
+    disklog_sync(true);
     return 0;
 }
 
 static void disklog_swap(os_timer_t timer, void *arg) {
     (void) arg;
-    disklog_sync();
+    disklog_sync(false);
     os_timer_mod(timer, DISLOG_SWAP_PERIOD);
 }
 
@@ -177,8 +186,9 @@ int disklog_input(const char *buf, size_t size) {
     if (buf == NULL || size == 0)
         return -EINVAL;
 
-    if (logctx.read_locked)
+    if (logctx.read_locked){
         return -EBUSY;
+	}
 
 	bio = logctx.bio;
 	if (rte_likely(!bio->panic)) {

@@ -188,6 +188,9 @@ void animation_stop(lv_obj_t *obj)
 	if (animimg->started) {
 		animimg->started = 0;
 		lv_anim_del(obj, animation_exec_cb);
+
+		/* Destory loader */
+		lvgl_img_loader_destroy(&animimg->loader);
 	}
 }
 

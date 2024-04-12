@@ -10,7 +10,7 @@
 #include "basework/generic.h"
 #include "basework/log.h"
 #include "basework/container/kfifo.h"
-
+#include <msgbox_cache.h>
 struct encoder_input {
 	int16_t diff;
 	uint16_t state;
@@ -18,9 +18,7 @@ struct encoder_input {
 
 static DEFINE_KFIFO(fifo, struct encoder_input, 64);
 static lv_indev_t *indev_encoder;
-#ifdef CONFIG_INPUT_DEV_ACTS_KNOB
-extern int16_t dy_sum;
-#endif
+
 int input_encoder_device_init(void);
 
 static void lvgl_encoder_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data) {
@@ -34,9 +32,7 @@ static void lvgl_encoder_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data) {
 	} else {
 		data->continue_reading = false;
 		data->enc_diff = 0;
-#ifdef CONFIG_INPUT_DEV_ACTS_KNOB		
-		dy_sum =0;
-#endif		
+	
 		data->state = LV_INDEV_STATE_RELEASED;
 	}
 }
@@ -44,6 +40,9 @@ static void lvgl_encoder_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data) {
 void lvgl_encoder_push(int diff, bool pressed) {
 	struct encoder_input enc;
 
+	if(msgbox_cache_num_popup_get())
+		return;
+	
 	enc.diff = (int16_t)diff;
 	enc.state = pressed? LV_INDEV_STATE_PRESSED: LV_INDEV_STATE_RELEASED;
 	kfifo_put(&fifo, enc);

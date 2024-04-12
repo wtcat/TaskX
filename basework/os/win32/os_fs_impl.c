@@ -15,7 +15,7 @@
 #include "basework/log.h"
 
 struct file {
-    struct file_base base;
+	struct file_class *vfs;
     FILE *fp;
 };
 
@@ -195,7 +195,13 @@ static int cstd_fs_stat(os_filesystem_t fs, const char* filename,
 }
 
 static struct file os_files[CONFIG_OS_MAX_FILES];
-struct file_class cstd_file_class = {
+static struct file_class cstd_file_class = {
+    .mntpoint   = NULL,
+    .next       = NULL,
+	.fds_buffer = os_files,
+	.fds_size   = sizeof(os_files),
+	.fd_size    = sizeof(os_files[0]),
+
     .open = cstd_fs_open,
     .close = cstd_fs_close,
     .ioctl = cstd_fs_ioctl,
@@ -214,16 +220,8 @@ struct file_class cstd_file_class = {
     .unlink = cstd_fs_unlink,
     .stat = cstd_fs_stat,
     .rename = cstd_fs_rename,
-
 };
 
 int cstd_fs_init(void) {
-    static struct vfs_node cstd_vfs = {
-        .mntpoint = NULL,
-        .vfs = &cstd_file_class
-    };
-    int err = os_obj_initialize(&cstd_file_class.robj, os_files, 
-        sizeof(os_files), sizeof(os_files[0]));
-    assert(err == 0);
-    return vfs_register(&cstd_vfs);
+	return vfs_register(&cstd_file_class);
 }

@@ -7,11 +7,11 @@
 #include "basework/modmgr.h"
 
 
-#define MTX_LOCK()   (void)pthread_mutex_lock(&_mtx)
-#define MTX_UNLOCK() (void)pthread_mutex_unlock(&_mtx)
-#define MTX_INIT()   (void)pthread_mutex_init(&_mtx, NULL)
+#define MTX_LOCK()   (void)os_mtx_lock(&_mtx)
+#define MTX_UNLOCK() (void)os_mtx_unlock(&_mtx)
+#define MTX_INIT()   (void)os_mtx_init(&_mtx, 0)
 
-static pthread_mutex_t _mtx;
+static os_mutex_t _mtx;
 static struct observer_base *_module_list;
 
 int module_manager_register(struct module_node *m) {

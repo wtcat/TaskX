@@ -165,7 +165,7 @@ int __rte_notrace env_dump(void) {
 
 int __rte_notrace env_init(void) {
 #ifndef CONFIG_BOOTLOADER
-    pthread_mutex_init(&sysenv.mtx, NULL);
+    os_mtx_init(&sysenv.mtx, 0);
 #endif
     return 0;
 }

@@ -571,15 +571,18 @@ void fxip_ll_reset(struct xipfs_context *ctx) {
 
 uint32_t fxip_ll_map(struct xipfs_context *ctx, struct xip_file *filp, 
     size_t *size) {
-    uint32_t end;
+    uint32_t end, addr;
+	
     if (size)
         *size = filp->pmeta->size;
-
-	pr_dbg("%s map %s to memory (blkofs: %d)\n", __func__, 
-		filp->pmeta->name, filp->pmeta->blkofs);
 	
-    return idx_to_offset(ctx, 
+    addr = idx_to_offset(ctx, 
         IDX_CONVERT(filp->pmeta->blkofs), &end);
+
+	pr_dbg("%s map %s to memory 0x%08x (blkofs: %d)\n", __func__, 
+		filp->pmeta->name, addr, filp->pmeta->blkofs);
+	
+    return addr;
 }
 
 static int shutdown_listen(struct observer_base *nb,

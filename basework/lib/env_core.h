@@ -28,7 +28,7 @@ struct env_reent {
     void (*free)(void *);
     bool alloced;
 #ifndef CONFIG_BOOTLOADER
-    pthread_mutex_t mtx;
+    os_mutex_t mtx;
 #endif
 };
 

@@ -25,7 +25,7 @@
     (((x) + FLASH_ERASE_BLKSZ - 1) & ~(FLASH_ERASE_BLKSZ - 1))
 
 struct file {
-    struct file_base base;
+	struct file_class *vfs;
     struct ptfs_file *fp;
 };
 
@@ -156,6 +156,12 @@ static int ptfs_impl_reset(os_filesystem_t fs) {
 
 static struct file os_files[CONFIG_OS_MAX_FILES] __rte_section(".ram.noinit");
 static struct file_class ptfs_class = {
+	.mntpoint    = "/PTFS:",
+	.next        = NULL,
+	.fds_buffer  = os_files,
+	.fds_size    = sizeof(os_files),
+	.fd_size     = sizeof(os_files[0]),
+
     .open = ptfs_impl_open,
     .close = ptfs_impl_close,
     .ioctl = ptfs_impl_ioctl,
@@ -174,40 +180,7 @@ static struct file_class ptfs_class = {
     .reset = ptfs_impl_reset,
 };
 
-#ifdef CONFIG_FW_UPDATE_CHECK
-static bool dev_address_updated(void) {
-    char bak_mac[16], mac[16];
-    int ret;
-
-    ret = nvram_config_get("BT_MAC", mac, 12);
-    if (ret <= 0) {
-        pr_err("Not found device MAC address\n");
-        goto _exit;
-    }
-
-    ret = nvram_config_get("BT_MAC_BAK", bak_mac, 12);
-    if (ret <= 0) {
-        pr_err("Not found MAC address backup\n");
-        goto _update;
-    }
-
-    if (!strncmp(mac, bak_mac, 12)) {
-        pr_notice("The firmware package not updated\n");
-        return false;
-    }
-
-_update:
-    nvram_config_set("BT_MAC_BAK", mac, 12);
-_exit:
-    return true;
-}
-#endif /* CONFIG_FW_UPDATE_CHECK */
-
 static int __rte_unused ptfs_impl_register(const struct device *dev) {
-    static struct vfs_node ptfs_vfs = {
-        .mntpoint = "/PTFS:",
-        .vfs = &ptfs_class
-    };
     uint32_t offset;
     int err;
     (void) dev;
@@ -233,10 +206,8 @@ static int __rte_unused ptfs_impl_register(const struct device *dev) {
         return err;
     pr_notice("## partition filesystem registed start(0x%x) size(%d)\n", 
         offset, CONFIG_PTFS_SIZE);
-    err = os_obj_initialize(&ptfs_class.robj, os_files, 
-        sizeof(os_files), sizeof(os_files[0]));
-    assert(err == 0);
-    return vfs_register(&ptfs_vfs);
+
+    return vfs_register(&ptfs_class);
 }
 
 #ifndef CONFIG_CARD_READER_APP
