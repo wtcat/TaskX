@@ -23,7 +23,7 @@
 /* Wait for view_delete operation to complete */
 #define STADNBY_EXTRA_DELAY  CONFIG_SCREEN_POST_DELAY
 #define ZERO_BRIGHTNESS  0
-#define USE_SCREEN_COVER 0
+#define USE_SCREEN_COVER 1
 
 static os_timer_t timer;
 static const struct device *screen_dev, *tp_dev;

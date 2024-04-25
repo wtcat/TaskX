@@ -1,0 +1,28 @@
+{
+    "name": "demo",
+    "init": "S0",
+    "machine" : {
+        "parent_1": [
+            {
+                "state": "S0"
+            },
+            {
+                "state": "S1"
+            },
+            {
+                "state": "S2"
+            }
+        ],
+        "parent_2": [
+            {
+                "state": "S4"
+            },
+            {
+                "state": "S5"
+            },
+            {
+                "state": "S6"
+            }
+        ]
+    }
+}

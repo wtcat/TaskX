@@ -176,9 +176,15 @@ void animation_start(lv_obj_t *obj, bool continued)
 	}
 
 	animimg->started = 1;
-	lv_anim_set_values(&animimg->anim, animimg->start_idx,
-			animimg->start_idx + animimg->src_count - 1);
+	
 	lv_anim_start(&animimg->anim);
+}
+
+void animation_set_value(lv_obj_t *obj, int32_t start, int32_t end)
+{
+	animation_t *animimg = (animation_t *)obj;
+
+	lv_anim_set_values(&animimg->anim, start, LV_MIN(end, animimg->src_count - 1));
 }
 
 void animation_stop(lv_obj_t *obj)
@@ -187,7 +193,7 @@ void animation_stop(lv_obj_t *obj)
 
 	if (animimg->started) {
 		animimg->started = 0;
-		lv_anim_del(obj, animation_exec_cb);
+		lv_anim_del(NULL, animation_exec_cb);
 
 		/* Destory loader */
 		lvgl_img_loader_destroy(&animimg->loader);
@@ -245,8 +251,6 @@ static bool load_image(lv_obj_t *obj, uint16_t index)
 		return true;
 
 	if (lvgl_img_loader_load(&animimg->loader, index, &next_src, &pos) == 0) {
-		if (animimg->src_dsc.data != NULL)
-			lvgl_img_loader_unload(&animimg->loader, animimg->src_idx, &animimg->src_dsc);
 
 		animimg->src_idx = index;
 		memcpy(&animimg->src_dsc, &next_src, sizeof(next_src));

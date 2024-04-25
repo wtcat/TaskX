@@ -177,6 +177,14 @@ void animation_start(lv_obj_t *obj, bool continued);
  */
 void animation_stop(lv_obj_t *obj);
 
+/**
+ * Set the start and end values of an animation
+ * @param obj       pointer to an initialized `animation_t` variable
+ * @param start     the start value
+ * @param end       the end value
+ */
+void animation_set_value(lv_obj_t* obj, int32_t start, int32_t end);
+
 /**********************
  *      MACROS
  **********************/

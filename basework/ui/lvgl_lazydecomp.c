@@ -1,13 +1,21 @@
 /*
- * Copyright 2024 wtcat 
+ * Copyright 2024 wtcat
+ * 
+ * Note: All APIs has no thread-safe
  */
 #include <assert.h>
 
 #include "basework/container/list.h"
 #include "basework/ui/lvgl_lazydecomp.h"
 
+#ifdef CONFIG_LAZYCACHE_MAX_NODES
+#define MAX_IMAGE_NODES CONFIG_LAZYCACHE_MAX_NODES
+#else
 #define MAX_IMAGE_NODES 32
-#define CACHE_ALIGNED 4
+#endif
+
+#define CACHE_ALIGNED   4
+#define CACHE_LIMIT(n)  (size_t)(((uintptr_t)(n) * 2) / 3)
 
 #define ALIGNED_UP_ADD(p, size, align) \
 	(char *)(((uintptr_t)p + size + align - 1) & ~(align - 1))
@@ -31,11 +39,11 @@ struct lazy_cache {
 	size_t            cache_limited;
 	uint16_t          policy;
 	uint16_t          cache_hits;
-	uint16_t          cache_miss;
+	uint16_t          cache_misses;
 	uint16_t          cache_resets;
+	uint16_t          node_misses;
 	uint8_t           invalid_pending;
 	uint8_t           cache_dirty;
-	uint8_t           reserved[2];
 	char             *first_avalible;
 
 	/*
@@ -57,14 +65,20 @@ struct lazy_cache {
 	char             *aux_freeptr;
 	void             (*aux_release)(void *p);
 #endif
+
+	/*
+	 * Hardware accelarator 
+	 */
+	void             (*wait_complete)(void *context, int devid);
 };
 
 static struct lazy_cache cache_controller;
 
-static inline void *alloc_cache_buffer(struct lazy_cache *cache, size_t size) {
+static inline void *alloc_cache_buffer(struct lazy_cache *cache, size_t size, void ***phead) {
 	void *p;
 
 	if (cache->end - cache->freeptr >= size) {
+		*phead = (void **)&cache->freeptr;
 		p = cache->freeptr;
 		cache->freeptr = ALIGNED_UP_ADD(cache->freeptr, size, CACHE_ALIGNED);
 		return p;
@@ -72,6 +86,7 @@ static inline void *alloc_cache_buffer(struct lazy_cache *cache, size_t size) {
 
 #ifdef CONFIG_LVGL_LAZYDECOMP_AUXMEM 
 	if (cache->aux_end - cache->aux_freeptr >= size) {
+		*phead = (void **)&cache->aux_freeptr;
 		p = cache->aux_freeptr;
 		cache->aux_freeptr = ALIGNED_UP_ADD(cache->aux_freeptr, size, CACHE_ALIGNED);
 		return p;
@@ -94,7 +109,8 @@ static void lazy_cache_reset(struct lazy_cache *cache) {
 		cache->freeptr        = cache->start;
 		cache->cache_dirty    = 0;
 		cache->cache_hits     = 0;
-		cache->cache_miss     = 0;
+		cache->cache_misses   = 0;
+		cache->node_misses    = 0;
 		cache->cache_resets++;
 
 #ifdef CONFIG_LVGL_LAZYDECOMP_AUXMEM
@@ -146,7 +162,7 @@ static void *lazy_cache_get(struct lazy_cache *cache, uint32_t key) {
 		}
 	}
 
-	cache->cache_miss++;
+	cache->cache_misses++;
 	return NULL;
 }
 
@@ -157,7 +173,7 @@ static void cache_internal_init(struct lazy_cache *cache, void *area, size_t siz
 	cache->start           = ALIGNED_UP_ADD(area, 0, CACHE_ALIGNED);
 	cache->end             = (char *)area + size;
 	cache->freeptr         = cache->start;
-	cache->cache_limited   = (cache->end - cache->start) / 2;
+	cache->cache_limited   = CACHE_LIMIT(cache->end - cache->start);
 	cache->cache_dirty     = 1;
 	cache->invalid_pending = 0;
 	cache->cache_resets    = 0;
@@ -170,10 +186,13 @@ static void cache_internal_init(struct lazy_cache *cache, void *area, size_t siz
 	cache->aux_freeptr     = NULL;
 #endif
 
+	cache->wait_complete   = NULL;
+
 	lazy_cache_reset(cache);
 }
 
-int lazy_cache_decomp(const lv_img_dsc_t **src, lv_img_dsc_t *imgbuf) {
+int lazy_cache_decomp(const lv_img_dsc_t **src, lv_img_dsc_t *imgbuf, void *context,
+	int devid) {
 	const lv_img_dsc_t *deref_src = *src;
 	int err = 0;
 
@@ -183,6 +202,7 @@ int lazy_cache_decomp(const lv_img_dsc_t **src, lv_img_dsc_t *imgbuf) {
 	if (deref_src->header.reserved == LV_IMG_LAZYDECOMP_MARKER) {
 		struct lazy_cache *cache = &cache_controller;
 		const struct lazy_decomp *ld = (struct lazy_decomp *)deref_src->data;
+		void **phead;
 		void *p;
 
 		assert(ld->decompress != NULL);
@@ -219,7 +239,7 @@ int lazy_cache_decomp(const lv_img_dsc_t **src, lv_img_dsc_t *imgbuf) {
 					/*
 					 * Try to allocate new buffer for cache block
 					 */
-					p = alloc_cache_buffer(cache, deref_src->data_size);
+					p = alloc_cache_buffer(cache, deref_src->data_size, &phead);
 					if (p != NULL) {
 						/*
 						 * Allocate a cache node 
@@ -231,8 +251,18 @@ int lazy_cache_decomp(const lv_img_dsc_t **src, lv_img_dsc_t *imgbuf) {
 							 * Record memory size 
 							 */
 							img->size = deref_src->data_size;
-							goto _decomp;
+							goto _decomp_nowait;
 						}
+
+						/*
+						 * If there are no free nodes, release the cache block
+						 */
+						*phead = p;
+
+						/*
+						 * Increase node misses count 
+						 */
+						cache->node_misses++;
 					}
 
 					/*
@@ -260,6 +290,13 @@ int lazy_cache_decomp(const lv_img_dsc_t **src, lv_img_dsc_t *imgbuf) {
 					img = NULL;
 
 _decomp:
+					/*
+					 * Waiting for rendering to complete
+					 */
+					if (cache->wait_complete)
+						cache->wait_complete(context, devid);
+
+_decomp_nowait:
 					err = ld->decompress(ld, p, deref_src->data_size);
 					if (!err) {
 						/*
@@ -284,6 +321,12 @@ _decomp:
 				cache->invalid_pending = 0;
 			}
 
+			/*
+			 * Waiting for rendering to complete
+			 */
+			if (cache->wait_complete)
+				cache->wait_complete(context, devid);
+
 			p = cache->start;
 			err = ld->decompress(ld, p, deref_src->data_size);
 			if (!err)
@@ -302,6 +345,10 @@ _next:
 
 _exit:
 	return err;
+}
+
+void lazy_cache_set_gpu_waitcb(void (*waitcb)(void *, int)) {
+	cache_controller.wait_complete = waitcb;
 }
 
 void lazy_cache_invalid(void) {
@@ -394,9 +441,10 @@ int lazy_cache_get_information(struct lazy_cache_statistics* sta) {
 	if (sta == NULL)
 		return -EINVAL;
 
-	sta->cache_hits = cache->cache_hits;
-	sta->cache_misses = cache->cache_miss;
+	sta->cache_hits   = cache->cache_hits;
+	sta->cache_misses = cache->cache_misses;
 	sta->cache_resets = cache->cache_resets;
+	sta->node_misses  = cache->node_misses;
 
 	return 0;
 }

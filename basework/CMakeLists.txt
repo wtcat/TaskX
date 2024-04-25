@@ -26,6 +26,7 @@ zephyr_library_compile_options(
 
 zephyr_library_sources_ifndef(CONFIG_BOOTLOADER 
     rq.c
+    fsm.c
     async_call.c
 )
 zephyr_library_sources(
@@ -43,7 +44,7 @@ zephyr_library_sources_ifdef(CONFIG_FLASHTRACE
 )
 endif()
 
-if (CONFIG_CPLUSPLUS OR WINDOWS OR LINUX)
+if (WINDOWS OR LINUX)
 zephyr_library_sources(ccinit.cc)
 endif()
 
@@ -63,10 +64,21 @@ if (NOT WINDOWS)
 	add_subdirectory(drive)
 endif()
 
-if (NOT WINDOWS AND NOT LINUX)
+if (NOT WINDOWS)
     add_subdirectory(debug)
-    add_subdirectory_ifdef(CONFIG_BASEWORK_UI ui)
+    if (NOT LINUX)
+        add_subdirectory_ifdef(CONFIG_BASEWORK_UI ui)
+    endif()
 endif()
 endif(NOT CONFIG_BOOTLOADER)
 
 add_subdirectory_ifdef(CONFIG_BOOTLOADER boot)
+
+
+# Must be place at the end
+if (CONFIG_CPLUSPLUS OR WINDOWS OR LINUX)
+zephyr_library_named(basework_cc)
+zephyr_library_sources(
+    ccinit.cc
+)
+endif()

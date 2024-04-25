@@ -155,6 +155,7 @@ int _rq_submit_with_copy(struct rq_context *rq, void (*exec)(void *, size_t),
     bh = general_malloc(BUFFER_HDR_SIZE(size));
     if (rte_unlikely(!bh)) {
         RQ_PANIC(rq, "*** no more memory! ***");
+        return -ENOMEM;
     }
     pr_dbg("allocated buffer: %p\n", bh);
     memcpy(bh->data, data, size);

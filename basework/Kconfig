@@ -102,4 +102,6 @@ config FLASHTRACE_ELEMNUMS
 
 endif #BASEWORK_TOOLS
 
+rsource "debug/Kconfig"
+
 endif #BASEWORK

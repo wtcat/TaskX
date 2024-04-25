@@ -33,21 +33,21 @@ static void fps_show(void *obj, mon_show_t show, void *arg) {
 }
 #endif
 
-static const struct imon_class mem_mon_class = {
+static struct imon_class mem_mon_class = {
     .show = mem_show,
     .arg = NULL,
     .period = 1000
 };
 
 #ifdef CONFIG_DISPLAY_COMPOSER_DEBUG_FPS
-static const struct imon_class fps_mon_class = {
+static struct imon_class fps_mon_class = {
     .show = fps_show,
     .arg = NULL,
     .period = 500
 };
 #endif /* CONFIG_DISPLAY_COMPOSER_DEBUG_FPS */
 
-static const struct imon_class rq_mon_class = {
+static struct imon_class rq_mon_class = {
     .show = rq_show,
     .arg = NULL,
     .period = 500

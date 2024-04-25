@@ -18,11 +18,8 @@ static lv_point_t origin_point = {
 
 static void sched_monitor_cb(struct _lv_timer_t* timer) {
     lv_obj_t* label = (lv_obj_t *)timer->user_data;
-    int i = (int)lv_obj_get_user_data(label);
-    const struct imon_class *task;
-
-    task = _mon_tasks[i];
-    if (task)
+	const struct imon_class *task = lv_obj_get_user_data(label);
+    if (task != NULL)
         task->show(label, (mon_show_t)lv_label_set_text_fmt, task->arg);
 }
 
@@ -81,7 +78,7 @@ static void panel_event_cb(lv_event_t *e) {
 }
 
 int _monitor_pannel_init(void *display) {
-    if (!display || !_mon_allocidx)
+	if (display == NULL || _mon_tasks == NULL)
         return -EINVAL;
 
     lv_obj_t* parent = lv_disp_get_layer_top((lv_disp_t*)display);
@@ -96,12 +93,12 @@ int _monitor_pannel_init(void *display) {
     lv_obj_set_style_bg_opa(panel, LV_OPA_50, 0);
     lv_obj_set_style_bg_color(panel, lv_color_white(), 0);
 
-    for (int i = 0; i < (int)_mon_allocidx; i++) {
-        if (!_mon_tasks[i])
-            break;
-        mon_text_create(panel, sched_monitor_cb, 
-            _mon_tasks[i]->period, (void *)i);
+    struct imon_class *iter = _mon_tasks;
+	while (iter != NULL) {
+		mon_text_create(panel, sched_monitor_cb, iter->period, iter);
+		iter = iter->next;
     }
+
     return 0;
 }
 

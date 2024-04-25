@@ -1,7 +1,7 @@
 /*
  * Copyright 2024 wtcat  
  * 
- * Note: All API has no thread-safe
+ * Note: All APIs has no thread-safe
  */
 #ifndef BASEWORK_UI_LVGL_LAZYDECOMP_H_
 #define BASEWORK_UI_LVGL_LAZYDECOMP_H_
@@ -37,6 +37,7 @@ struct lazy_cache_statistics {
 	uint16_t cache_hits;
 	uint16_t cache_misses;
 	uint16_t cache_resets;
+	uint16_t node_misses;
 };
 
 /*
@@ -47,7 +48,7 @@ struct lazy_cache_statistics {
  * @release point to memory free function
  * return 0 if success
  */
-int lazy_cache_init(void *area, size_t size, void (*release)(void *p));
+int  lazy_cache_init(void *area, size_t size, void (*release)(void *p));
 
 /*
  * lazy_cache_renew - Reinitialize cache controller with new size
@@ -56,9 +57,15 @@ int lazy_cache_init(void *area, size_t size, void (*release)(void *p));
  * @alloc point to memory allocate function
  * return 0 if success
  */
-int lazy_cache_renew(size_t size, void *(*alloc)(size_t));
+int  lazy_cache_renew(size_t size, void *(*alloc)(size_t));
 
-	/*
+/*
+ * lazy_cache_set_gpu_waitcb - Set the callback function that 
+ * waits for the GPU to finish
+ */
+void lazy_cache_set_gpu_waitcb(void (*waitcb)(void *, int));
+
+/*
  * lazy_cache_invalid - Clear all cached data
  */
 void lazy_cache_invalid(void);
@@ -73,11 +80,14 @@ void lazy_cache_set_policy(int policy);
 /*
  * lazy_cache_decomp - Decompress picture data with cache policy
  *
- * @src point to image that will be draw
- * @imgbuf point to temporary image buffer
+ * @src     point to image that will be draw
+ * @imgbuf  point to temporary image buffer
+ * @context Point to the context of the renderder
+ * @devid   device ID
  * return 0 if success
  */
-int  lazy_cache_decomp(const lv_img_dsc_t **src, lv_img_dsc_t *imgbuf);
+int  lazy_cache_decomp(const lv_img_dsc_t **src, lv_img_dsc_t *imgbuf, void *context,
+					  int devid);
 
 
 #ifdef CONFIG_LVGL_LAZYDECOMP_AUXMEM

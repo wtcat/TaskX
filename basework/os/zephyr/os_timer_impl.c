@@ -116,8 +116,12 @@ static void timer_slave_start(struct os_timer *p, long expires) {
                 pr_dbg("%s: p->task(%p) p->pfn(%p) p->parg(%p)\n", 
                     __func__, p->task, p->pfn, p->parg);
             }
+
+            timer_add(&p->l_timer, expires);
+        } else {
+            timer_mod(&p->l_timer, expires);
         }
-        timer_mod(&p->l_timer, expires);
+        
     } else {
         if (unlikely(atomic_cas(&p->slave, 1, 0))) {
             timer_del(&p->l_timer);
