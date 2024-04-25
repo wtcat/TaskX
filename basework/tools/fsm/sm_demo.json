@@ -1,6 +1,14 @@
 {
     "name": "demo",
     "init": "S0",
+    "action": [
+        {
+            "name": "ON"
+        },
+        {
+            "name": "OFF"
+        }
+    ],
     
     "machine" : {
         "P0": [
